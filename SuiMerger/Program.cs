@@ -13,8 +13,18 @@ namespace SuiMerger
     {
         static void Main(string[] args)
         {
+            //MUST set this so that diff tool can output proper unicode (otherwise output is scrambled)
+            Console.OutputEncoding = System.Text.Encoding.UTF8;
+
+            //set console output to UTF-8 so can see japanese characters
+            /*
+            Console.WriteLine("沙都子は、本当はまだ怖いくせにニヤ");
+            Console.ReadLine();*/
+
             const string separate_xml_folder = @"c:\tempsui\sui_try_merge";
             const string untranslatedXMLFilePath = @"c:\tempsui\sui_xml_NOT_translated.xml";
+            const string mangagamerScript = @"C:\tempsui\example_scripts\onik_001.txt";
+            const string diff_temp_folder = @"C:\tempsui\temp_diff";
 
             //These booleans control how much data should be regenerated each iteration
             //Set all to false to regenerate the data
@@ -29,6 +39,12 @@ namespace SuiMerger
             
             //load all ps3 dialogue instructions from the XML file
             List<PS3DialogueInstruction> PS3DialogueInstructions = PS3XMLReader.GetPS3DialoguesFromXML(untranslatedXMLFilePath);
+
+            //load all the mangagamer lines form the mangagamer file
+            List<MangaGamerDialogue> allMangaGamerDialogue = MangaGamerScriptReader.GetDialogueLinesFromMangaGamerScript(mangagamerScript);
+
+            //Diff the dialogue
+            Differ.DoDiff(diff_temp_folder, allMangaGamerDialogue, PS3DialogueInstructions);
 
             Console.ReadLine();
 
