@@ -9,20 +9,6 @@ using System.Xml;
 
 namespace SuiMerger
 {
-    class PS3DialogueInstruction
-    {
-        int num;
-        int dlgtype;
-        string data; //raw string data from the translated XML file
-
-        public PS3DialogueInstruction(int num, int dlgtype, string data, bool autoTranslate=true)
-        {
-            this.num = num;
-            this.dlgtype = dlgtype;
-            this.data = autoTranslate ? FileTranslator.TranslateString(data) : data;
-        }
-    }    
-
     class Program
     {
         static void Main(string[] args)
