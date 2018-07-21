@@ -9,104 +9,40 @@ using System.Xml;
 
 namespace SuiMerger
 {
-    class XMLMerger
+    class PS3DialogueInstruction
     {
-        static string xmlCountPattern = @".*?_(\d+?).xml";
-        static Regex xmlCountRegex = new Regex(xmlCountPattern, RegexOptions.IgnoreCase);
+        int num;
+        int dlgtype;
+        string data; //raw string data from the translated XML file
 
-        //merges files in alphabetical order
-        public static void MergeFilesInFolder(string folder, string outputFilePath)
+        public PS3DialogueInstruction(int num, int dlgtype, string data, bool autoTranslate=true)
         {
-            Dictionary<int, string> filePathDict = new Dictionary<int, string>();
-            int numFiles = 0;
-
-            string[] files = Directory.GetFiles(folder);
-            foreach (string filename in files)
-            {
-                Match match = xmlCountRegex.Match(filename);
-                if (!match.Success)
-                {
-                    throw new FormatException("XML filename does not adhere to regex pattern!");
-                }
-
-                int xmlCount = Convert.ToInt32(match.Groups[1].Value);
-                Console.WriteLine($"{filename}: {xmlCount}");
-
-                filePathDict.Add(xmlCount, Path.Combine(folder, filename));
-                numFiles += 1;
-            }
-
-            using (FileStream outputFile = File.Open(outputFilePath, FileMode.Create))
-            {
-                long bytesRead = 0;
-                for (int i = 0; i < numFiles; i++)
-                {
-                    string filePath = filePathDict[i];
-                    Console.WriteLine($"Writing {filePath}");
-                    byte[] fileAsBytes = File.ReadAllBytes(filePath);
-                    outputFile.Write(fileAsBytes, 0, fileAsBytes.Length);
-
-                    //save total bytes read for debugging
-                    bytesRead += fileAsBytes.Length;
-                }
-
-                Console.WriteLine($"Read {bytesRead} bytes, Wrote {outputFile.Position} bytes");
-            }
+            this.num = num;
+            this.dlgtype = dlgtype;
+            this.data = autoTranslate ? FileTranslator.TranslateString(data) : data;
         }
-    }
-    class PS3XMLReader
-    {
-        public static async Task TestReader(System.IO.Stream stream)
-        {
-            XmlReaderSettings settings = new XmlReaderSettings();
-            settings.Async = true;
-
-            using (XmlReader reader = XmlReader.Create(stream, settings))
-            {
-                while (await reader.ReadAsync())
-                {
-                    switch (reader.NodeType)
-                    {
-                        case XmlNodeType.Element:
-                            Console.WriteLine("Attributes of <" + reader.Name + ">");
-                            while (reader.MoveToNextAttribute())
-                            {
-                                Console.WriteLine(" {0}={1}", reader.Name, reader.Value);
-                            }
-
-                            break;
-                        case XmlNodeType.Text:
-                            Console.WriteLine("Text Node: {0}",
-                                     await reader.GetValueAsync());
-                            break;
-                        case XmlNodeType.EndElement:
-                            Console.WriteLine("End Element {0}", reader.Name);
-                            break;
-                        default:
-                            Console.WriteLine("Other node {0} with value {1}",
-                                            reader.NodeType, reader.Value);
-                            break;
-                    }
-                }
-            }
-        }
-    }
-
+    }    
 
     class Program
     {
         static void Main(string[] args)
         {
-            XMLMerger.MergeFilesInFolder(@"c:\temp\sui_try_merge", @"c:\temp\sui_xml_merged.xml");
+            const string separate_xml_folder = @"c:\tempsui\sui_try_merge";
+            const string untranslatedXMLFilePath = @"c:\tempsui\sui_xml_NOT_translated.xml";
 
-            Console.ReadLine();
+            //These booleans control how much data should be regenerated each iteration
+            //Set all to false to regenerate the data
+            //skip concatenating the separate xml files into one
+            bool do_concat = false;
 
-            return;
-            string XMLFilePath = @"C:\temp\sui\sui_full.xml";
 
-            FileStream fs = new FileStream(XMLFilePath, FileMode.Open);
-
-            Task result = PS3XMLReader.TestReader(fs);
+            if (do_concat)
+            { 
+                FileConcatenator.MergeFilesInFolder(separate_xml_folder, untranslatedXMLFilePath);
+            }
+            
+            //load all ps3 dialogue instructions from the XML file
+            List<PS3DialogueInstruction> PS3DialogueInstructions = PS3XMLReader.GetPS3DialoguesFromXML(untranslatedXMLFilePath);
 
             Console.ReadLine();
 
