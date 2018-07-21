@@ -21,4 +21,16 @@ namespace SuiMerger
             this.data = autoTranslate ? FileTranslator.TranslateString(data) : data;
         }
     }
+
+    public class MangagamerDialogue
+    {
+        int lineNumber;
+        string data; //raw string data from the translated XML file
+
+        public MangagamerDialogue(int lineNumber, string data)
+        {
+            this.lineNumber = lineNumber;
+            this.data = data;
+        }
+    }
 }

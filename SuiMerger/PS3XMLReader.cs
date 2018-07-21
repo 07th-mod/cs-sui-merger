@@ -41,11 +41,6 @@ namespace SuiMerger
                                 string data = reader.GetAttribute("data");
                                 dialogueInstructions.Add(new PS3DialogueInstruction(num, dlgtype, data));
                             }
-                            /*Dictionary<string, string> 
-                            while (reader.MoveToNextAttribute())
-                            {
-                                Console.WriteLine(" {0}={1}", reader.Name, reader.Value);
-                            }*/
 
                             break;
                         case XmlNodeType.Text:
