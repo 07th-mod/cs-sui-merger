@@ -17,7 +17,7 @@ namespace SuiMerger
 {
     class Chunker
     {
-        string startOfChunkString = ">>>> DIFF START";
+        DialogueBase startOfChunkString = new DialogueBase() { ID = -1, otherDialogue = null, data = ">>>> DIFF START" } ;
         IEnumerator<DialogueBase> dialogueIter;
 
         public Chunker(IEnumerator<DialogueBase> dialogueIter)
@@ -36,15 +36,20 @@ namespace SuiMerger
             
             while (dialogueIter.Current != null)
             {
-                mgCurrentChunk.Add(">>>> " + startOfChunkString);
+                string headerMarker = "NULL";
+                if (startOfChunkString.otherDialogue != null)
+                    headerMarker = startOfChunkString.otherDialogue.ID.ToString();
+
+                mgCurrentChunk.Add($">>>> [{startOfChunkString.ID} -> {headerMarker}]: {startOfChunkString.data}");
+
                 DialogueBase currentDialogue = dialogueIter.Current;
-                startOfChunkString = currentDialogue.data; //this sets the start of chunk line for the NEXT chunk
+                startOfChunkString = currentDialogue; //this sets the start of chunk line for the NEXT chunk
                 mgCurrentChunk.AddRange(currentDialogue.previousLinesOrInstructions);
                 dialogueIter.MoveNext();
 
                 if (currentDialogue.otherDialogue != null)
                 {
-                    Console.WriteLine($"Associated ps3: {currentDialogue.otherDialogue.ID}");
+                    Console.WriteLine($"{currentDialogue.ID} -> {currentDialogue.otherDialogue.ID}");
                     break;
                 }
             }
@@ -160,20 +165,6 @@ namespace SuiMerger
             Console.ReadLine();
 
             return;
-
-            LineTrackerMG lt = new LineTrackerMG();
-            string fileToParse = "manga_gamer_example.txt";
-            
-            using (StreamReader sr = new StreamReader(fileToParse))
-            {
-                String line;
-                while ((line = sr.ReadLine()) != null)
-                {
-                    Console.WriteLine(line);
-                    lt.AddLine(line);
-                }
-            }
-
         }
     }
 }

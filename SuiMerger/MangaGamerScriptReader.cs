@@ -21,7 +21,6 @@ namespace SuiMerger
             {
                 if (line.Contains("OutputLine") && Differ.PrepareStringForDiff(line).Length > 4)
                 {
-//                    Console.WriteLine($"Adding {line}");
                     dialogues.Add(new MangaGamerDialogue(lineNumber, line, previousLines));
                     previousLines.Clear();
                 }

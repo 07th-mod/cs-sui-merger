@@ -76,10 +76,6 @@ namespace SuiMerger
                 foreach (DialogueBase line in dialogues)
                 {
                     string preprocessedLine = line.data;
-                    if(isPS3)
-                    {
-                        preprocessedLine = PS3DialogueTools.StripPS3NamesFromString(preprocessedLine);
-                    }
 
                     preprocessedLine = PrepareStringForDiff(preprocessedLine);
 
@@ -94,15 +90,30 @@ namespace SuiMerger
         //If a dialogue cannot be associated, it is set to NULL.
         public static void DoDiff(string tempFolderPath, List<MangaGamerDialogue> mangaGamerDialogueList, List<PS3DialogueInstruction> ps3DialogueList)
         {
+            //Convert PS3 Dialogue list into list of subsections before performing diff - this can be re-assembled later!
             string mangaGamerDiffInputPath = Path.Combine(tempFolderPath, "diffInputA.txt");
             string PS3DiffInputPath = Path.Combine(tempFolderPath, "diffInputB.txt");
             string diffOutputPath = Path.Combine(tempFolderPath, "diffOutput.txt");
+
+            //Generate dummy mangaGamerDialogues here
+            List<PS3DialogueInstruction> dummyPS3Instructions = new List<PS3DialogueInstruction>();
+            int ps3DialogueIndex = 0;
+            foreach (PS3DialogueInstruction ps3Dialogue in ps3DialogueList)
+            {
+                List<string> splitDialogueStrings = PS3DialogueTools.SplitPS3StringNoNames(ps3Dialogue.data);
+                foreach(string splitDialogueString in splitDialogueStrings)
+                {
+                    //dummy instructions index into the ps3DialogueList (for now...)
+                    dummyPS3Instructions.Add(new PS3DialogueInstruction(ps3DialogueIndex, ps3Dialogue.dlgtype, splitDialogueString, new List<string>()));
+                }
+                ps3DialogueIndex++;
+            }
 
             //write the diff-prepared manga gamer dialogue to a file
             WriteListOfDialogueToFile(mangaGamerDialogueList, mangaGamerDiffInputPath, isPS3: false);
 
             //write the diff-prepared ps3 dialogue to a file
-            WriteListOfDialogueToFile(ps3DialogueList, PS3DiffInputPath, isPS3: true);
+            WriteListOfDialogueToFile(dummyPS3Instructions, PS3DiffInputPath, isPS3: true);
 
             //do the diff
             string diffResult = RunDiffTool(mangaGamerDiffInputPath, PS3DiffInputPath);
@@ -136,8 +147,10 @@ namespace SuiMerger
                     char lineType = line[0];
                     if(lineType == ' ') //lines match
                     {
-                        mangaGamerDialogueList[mgIndex].Associate(ps3DialogueList[ps3Index]);
-                        Console.WriteLine($"Line {mangaGamerDialogueList[mgIndex].ID} of mangagamer associates with PS3 ID {ps3DialogueList[ps3Index].ID}");
+                        PS3DialogueInstruction dummyPS3Instruction = dummyPS3Instructions[ps3Index];
+                        PS3DialogueInstruction truePS3Instruction = ps3DialogueList[dummyPS3Instruction.ID];
+                        mangaGamerDialogueList[mgIndex].Associate(truePS3Instruction); //the ID is reused to index into ps3DialogueList - fix this later!
+                        Console.WriteLine($"Line {mangaGamerDialogueList[mgIndex].ID} of mangagamer associates with PS3 ID {truePS3Instruction.ID}");
 
                         mgIndex++;
                         ps3Index++;
