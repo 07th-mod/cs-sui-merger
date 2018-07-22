@@ -60,38 +60,6 @@ namespace SuiMerger
 
     class Program
     {
-        static void WriteSideBySide(FileStream fsA, FileStream fsB, List<string> listA, List<string> listB)
-        {
-
-            int maxLen = Math.Max(listA.Count, listB.Count);
-            for (int i = 0; i < maxLen; i++)
-            {
-                string listAToWrite = "\n";
-                string listBToWrite = "\n";
-
-                if (i < listA.Count)
-                {
-                    listAToWrite = listA[i].TrimEnd() + "\n";
-                }
-
-                if (i < listB.Count)
-                {
-                    listBToWrite = listB[i].TrimEnd() + "\n";
-                }
-                //string left_string_padded = listAToWrite.Substring(0, Math.Min(80, listAToWrite.Length)).PadRight(80);
-
-                //string right_string = listBToWrite;
-                //string joined = left_string_padded + " | " + right_string + "\n";
-
-                byte[] stringAsBytes = new UTF8Encoding(true).GetBytes(listAToWrite);
-                fsA.Write(stringAsBytes, 0, stringAsBytes.Length);
-
-                stringAsBytes = new UTF8Encoding(true).GetBytes(listBToWrite);
-                fsB.Write(stringAsBytes, 0, stringAsBytes.Length);
-            }
-
-        }
-
         static void WriteSideBySideTopPad(FileStream fsA, FileStream fsB, List<string> listA, List<string> listB)
         {
             int maxLen = Math.Max(listA.Count, listB.Count);
@@ -128,7 +96,7 @@ namespace SuiMerger
             //These booleans control how much data should be regenerated each iteration
             //Set all to false to regenerate the data
             //skip concatenating the separate xml files into one
-            bool do_concat = true;
+            bool do_concat = false;
 
             if (do_concat)
             { 
@@ -140,21 +108,6 @@ namespace SuiMerger
 
             //load all the mangagamer lines form the mangagamer file
             List<MangaGamerDialogue> allMangaGamerDialogue = MangaGamerScriptReader.GetDialogueLinesFromMangaGamerScript(mangagamerScript);
-
-            /*StringBuilder sb = new StringBuilder();
-            foreach (PS3DialogueInstruction p in PS3DialogueInstructions)
-            {
-                var asdf = PS3DialogueTools.SplitPS3StringNoNames(p.data);
-                Console.WriteLine($"\n>> Split [{p.data}] into:");
-                foreach (string splits in asdf)
-                {
-                    Console.WriteLine(splits);
-                }
-                sb.Append(p.data + '\n');
-            }
-            File.WriteAllText(@"c:\tempsui\debug_ps3_raw_dialogue.txt", sb.ToString());
-
-            return;*/
 
             //Diff the dialogue
             Differ.DoDiff(diff_temp_folder, allMangaGamerDialogue, PS3DialogueInstructions);
@@ -171,26 +124,22 @@ namespace SuiMerger
             {
                 using (FileStream fsPS3 = File.Open(debug_side_by_side_diff_PS3, FileMode.Create))
                 {
-                    //NOTE: keep track of current line count?
                     //iterate through each dialogue in PS3 list
-                    //if the dialogue has an association, iterate through the list of mgDialogues until all the associated mgDialogues are reached.
                     List<string> currentPS3ToSave = new List<string>();
                     List<string> currentMangaGamerToSave = new List<string>();
                     foreach(PS3DialogueInstruction ps3Instruction in PS3DialogueInstructions)
                     {
+                        //add the previous lines (instructions)
+                        currentPS3ToSave.AddRange(ps3Instruction.previousLinesOrInstructions);
+
+                        //add the current PS3 line
+                        StringBuilder associationsSB = new StringBuilder();
+                        foreach(MangaGamerDialogue otherdialogue in ps3Instruction.GetOtherMangaGamerDialogues())
                         {
-                            //add the previous lines (instructions)
-                            currentPS3ToSave.AddRange(ps3Instruction.previousLinesOrInstructions);
-
-                            //add the current PS3 line
-                            StringBuilder sb = new StringBuilder();
-                            foreach(MangaGamerDialogue otherdialogue in ps3Instruction.GetOtherMangaGamerDialogues())
-                            {
-                                sb.Append($"{otherdialogue.ID}, ");
-                            }                            
-                            currentPS3ToSave.Add($">>>> [{ps3Instruction.ID} -> {sb.ToString()}]: {ps3Instruction.data}");
-                        }
-
+                            associationsSB.Append($"{otherdialogue.ID}, ");
+                        }                            
+                        currentPS3ToSave.Add($">>>> [{ps3Instruction.ID} -> {associationsSB.ToString()}]: {ps3Instruction.data}");
+                        
                         //if the dialogue association is empty, continue
                         List<MangaGamerDialogue> associatedMangaGamerDialogues = ps3Instruction.GetOtherMangaGamerDialogues();
                         if (associatedMangaGamerDialogues.Count == 0)
@@ -198,7 +147,7 @@ namespace SuiMerger
                             continue;
                         }
 
-                        //Prepare a list of associated manga gamer line numbers 
+                        //Prepare a list of associated manga gamer line numbers
                         HashSet<int> mangaGamerLinesToGet = new HashSet<int>();
                         foreach(MangaGamerDialogue mgDialogue in associatedMangaGamerDialogues)
                         {
@@ -219,7 +168,8 @@ namespace SuiMerger
 
                             mgIter.MoveNext();
 
-                            //if the entire hashset is empty, proceed to dump lines
+                            //if the entire hashset is empty (that is, all the associated MG lines
+                            //of the PS3 line have already been dumped, proceed to dump out lines
                             if (mangaGamerLinesToGet.Count == 0)
                             {
                                 break;
