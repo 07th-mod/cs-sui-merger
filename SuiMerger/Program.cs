@@ -80,18 +80,47 @@ namespace SuiMerger
             StringUtils.WriteStringList(fsB, listB, forceNewline:true);
         }
 
+        //Returns a new list, filtered by the specified ranges
+        static List<PS3DialogueInstruction> GetFilteredPS3Instructions(List<PS3DialogueInstruction> inputList, int regionStart, int regionEnd)
+        {
+            List<PS3DialogueInstruction> filteredList = new List<PS3DialogueInstruction>();
+            if (regionStart == -1)
+            {
+                filteredList = inputList;
+            }
+            else
+            {
+                foreach (PS3DialogueInstruction ps3Dialogue in inputList)
+                {
+                    if (ps3Dialogue.ID >= regionStart && ps3Dialogue.ID <= regionEnd)
+                    {
+                        filteredList.Add(ps3Dialogue);
+                    }
+                }
+            }
+            return filteredList;
+        }
+
         static void Main(string[] args)
         {
+            //Tsumi 26 Start- 92565  End - 93391 / Tsumi 25 -Start -  91816  End - 92563
+            //THESE RANGES ARE INCLUSIVE!
+            int regionStart = 91816;
+            int regionEnd = 92563;
+
             //MUST set this so that diff tool can output proper unicode (otherwise output is scrambled)
             //and so can see japanese characters (you might need to change your console font too to MS Gothic or similar)
             Console.OutputEncoding = System.Text.Encoding.UTF8;
             
-            const string separate_xml_folder = @"c:\tempsui\sui_try_merge";
-            const string untranslatedXMLFilePath = @"c:\tempsui\sui_xml_NOT_translated.xml";
-            const string mangagamerScript = @"C:\tempsui\example_scripts\onik_001.txt";
-            const string diff_temp_folder = @"C:\tempsui\temp_diff";
-            const string debug_side_by_side_diff_MG = @"c:\tempsui\debug_side_MG.txt";
-            const string debug_side_by_side_diff_PS3 = @"c:\tempsui\debug_side_PS3.txt";
+            const string separate_xml_folder = @"c:\tempsui\sui_try_merge";                     //input (if merging enabled)
+            const string untranslatedXMLFilePath = @"c:\tempsui\sui_xml_NOT_translated.xml";    //output/input - ps3 xml as a single fiile
+            //const string mangagamerScript = @"C:\tempsui\example_scripts\onik_001.txt";
+            const string mangagamerScript = @"C:\tempsui\example_scripts\tsumi_025_3.txt";      //Input mangagamer script
+
+            const string diff_temp_folder = @"C:\tempsui\temp_diff";                            //OUTPUT folder - must already exist (fix this later)
+
+            const string debug_side_by_side_diff_MG = @"c:\tempsui\debug_side_MG.txt";          //Debug OUTPUT for side-by-side diff
+            const string debug_side_by_side_diff_PS3 = @"c:\tempsui\debug_side_PS3.txt";        //Debug OUTPUT for side-by-side diff
 
             //These booleans control how much data should be regenerated each iteration
             //Set all to false to regenerate the data
@@ -103,8 +132,9 @@ namespace SuiMerger
                 FileConcatenator.MergeFilesInFolder(separate_xml_folder, untranslatedXMLFilePath);
             }
             
-            //load all ps3 dialogue instructions from the XML file
-            List<PS3DialogueInstruction> PS3DialogueInstructions = PS3XMLReader.GetPS3DialoguesFromXML(untranslatedXMLFilePath);
+            //load all ps3 dialogue instructions from the XML file, then take only the user specified region
+            List<PS3DialogueInstruction> PS3DialogueInstructionsPreFilter = PS3XMLReader.GetPS3DialoguesFromXML(untranslatedXMLFilePath);
+            List<PS3DialogueInstruction> PS3DialogueInstructions = GetFilteredPS3Instructions(PS3DialogueInstructionsPreFilter, regionStart, regionEnd);
 
             //load all the mangagamer lines form the mangagamer file
             List<MangaGamerDialogue> allMangaGamerDialogue = MangaGamerScriptReader.GetDialogueLinesFromMangaGamerScript(mangagamerScript);
