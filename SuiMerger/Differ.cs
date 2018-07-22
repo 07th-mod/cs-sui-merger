@@ -150,6 +150,7 @@ namespace SuiMerger
                         PS3DialogueInstruction dummyPS3Instruction = dummyPS3Instructions[ps3Index];
                         PS3DialogueInstruction truePS3Instruction = ps3DialogueList[dummyPS3Instruction.ID];
                         mangaGamerDialogueList[mgIndex].Associate(truePS3Instruction); //the ID is reused to index into ps3DialogueList - fix this later!
+                        truePS3Instruction.Add(mangaGamerDialogueList[mgIndex]);
                         Console.WriteLine($"Line {mangaGamerDialogueList[mgIndex].ID} of mangagamer associates with PS3 ID {truePS3Instruction.ID}");
 
                         mgIndex++;

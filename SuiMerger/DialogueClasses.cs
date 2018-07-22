@@ -31,6 +31,7 @@ namespace SuiMerger
     {
         public int dlgtype;
         public int debug_length;
+        private List<MangaGamerDialogue> otherMangaGamerDialogues = new List<MangaGamerDialogue>();
 
         public PS3DialogueInstruction(int num, int dlgtype, string data, List<string> previousXML, bool autoTranslate = true)
         {
@@ -41,6 +42,16 @@ namespace SuiMerger
             this.previousLinesOrInstructions = new List<string>();
             this.previousLinesOrInstructions.AddRange(previousXML);
             this.debug_length = previousXML.Count;
+        }
+
+        public void Add(MangaGamerDialogue mgDialog)
+        {
+            otherMangaGamerDialogues.Add(mgDialog);
+        }
+
+        public List<MangaGamerDialogue> GetOtherMangaGamerDialogues()
+        {
+            return new List<MangaGamerDialogue>(otherMangaGamerDialogues);
         }
     }
 
