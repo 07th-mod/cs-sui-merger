@@ -24,6 +24,7 @@ namespace SuiMerger
 
             XmlReaderSettings settings = new XmlReaderSettings();
             //settings.Async = true;
+            List<string> previousXML = new List<string>();
 
             using (XmlReader reader = XmlReader.Create(stream, settings))
             {
@@ -33,15 +34,25 @@ namespace SuiMerger
                     {
                         case XmlNodeType.Element:
                             //Console.WriteLine("Attributes of <" + reader.Name + ">");
-                            string type = reader.GetAttribute("type");
-                            if (type == "DIALOGUE")
-                            {
-                                int num = Convert.ToInt32(reader.GetAttribute("num"));
-                                int dlgtype = Convert.ToInt32(reader.GetAttribute("dlgtype"));
-                                string data = reader.GetAttribute("data");
-                                dialogueInstructions.Add(new PS3DialogueInstruction(num, dlgtype, data));
-                            }
 
+                            if (reader.Name == "ins")
+                            {
+                                if (reader.GetAttribute("type") == "DIALOGUE")
+                                {
+                                    int num = Convert.ToInt32(reader.GetAttribute("num"));
+                                    int dlgtype = Convert.ToInt32(reader.GetAttribute("dlgtype"));
+                                    string data = reader.GetAttribute("data");
+                                    dialogueInstructions.Add(new PS3DialogueInstruction(num, dlgtype, data, previousXML));
+                                    previousXML.Clear();
+                                }
+                                else
+                                {
+                                    //store previous xml nodes before each Dialogue line
+                                    string outerXML = reader.ReadOuterXml();
+//                                    Console.WriteLine($"Adding {outerXML}");
+                                    previousXML.Add(outerXML);
+                                }
+                            }
                             break;
                         case XmlNodeType.Text:
                             if (reader.Value.Trim() != "")

@@ -32,6 +32,12 @@ namespace SuiMerger
             return sb.ToString();
         }
 
+        //PS3 lines need to strip the names of the characters etc. from the string.
+        public static string PreparePS3LineForDiff(string s)
+        {
+
+        }
+
         //Note: this function may not work on files with greater than 1_000_000 lines
         public static string RunDiffTool(string inputPathA, string inputPathB)
         {
@@ -69,7 +75,7 @@ namespace SuiMerger
         }
 
         //NOTE: this function adds a newline to the end of each string.
-        static public void WriteListOfDialogueToFile(IEnumerable<DialogueBase> dialogues, string outputFileName)
+        static public void WriteListOfDialogueToFile(IEnumerable<DialogueBase> dialogues, string outputFileName, bool isPS3)
         {
             //write the diff-prepared manga gamer dialogue to a file
             using (FileStream fs = new FileStream(outputFileName, FileMode.Create))
@@ -77,12 +83,19 @@ namespace SuiMerger
                 foreach (DialogueBase line in dialogues)
                 {
                     string preprocessedLine = PrepareStringForDiff(line.data);
+                    if(isPS3)
+                    {
+                        preprocessedLine = PreparePS3LineForDiff(preprocessedLine);
+                    }
                     byte[] stringAsBytes = new UTF8Encoding(true).GetBytes($"{preprocessedLine}\n");
                     fs.Write(stringAsBytes, 0, stringAsBytes.Length);
                 }
             }
         }
 
+        //This function performs the diff given the two lists of dialogue.
+        //It then UPDATES the values in the mangaGamerDialogueList and the ps3DialogueList (the DialogueBase.other value is updated on each dialogue object!)
+        //If a dialogue cannot be associated, it is set to NULL.
         public static void DoDiff(string tempFolderPath, List<MangaGamerDialogue> mangaGamerDialogueList, List<PS3DialogueInstruction> ps3DialogueList)
         {
             string mangaGamerDiffInputPath = Path.Combine(tempFolderPath, "diffInputA.txt");
@@ -90,10 +103,10 @@ namespace SuiMerger
             string diffOutputPath = Path.Combine(tempFolderPath, "diffOutput.txt");
 
             //write the diff-prepared manga gamer dialogue to a file
-            WriteListOfDialogueToFile(mangaGamerDialogueList, mangaGamerDiffInputPath);
+            WriteListOfDialogueToFile(mangaGamerDialogueList, mangaGamerDiffInputPath, isPS3: false);
 
             //write the diff-prepared ps3 dialogue to a file
-            WriteListOfDialogueToFile(ps3DialogueList, PS3DiffInputPath);
+            WriteListOfDialogueToFile(ps3DialogueList, PS3DiffInputPath, isPS3: false);
 
             //do the diff
             string diffResult = RunDiffTool(mangaGamerDiffInputPath, PS3DiffInputPath);
@@ -135,12 +148,12 @@ namespace SuiMerger
                     }
                     else if(lineType == '+') //only exist in ps3
                     {
-                        ps3DialogueList[ps3Index] = null;
+                        //ps3DialogueList[ps3Index].Associate(null);
                         ps3Index++;
                     }
                     else if(lineType == '-') //only exist in mangagamer
                     {
-                        mangaGamerDialogueList[mgIndex] = null;
+                        //mangaGamerDialogueList[mgIndex].Associate(null);
                         mgIndex++;
                     }
                 }

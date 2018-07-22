@@ -16,12 +16,18 @@ namespace SuiMerger
             List<MangaGamerDialogue> dialogues = new List<MangaGamerDialogue>();
 
             int lineNumber = 0;
+            List<string> previousLines = new List<string>();
             foreach (string line in allLines)
             {
                 if (line.Contains("OutputLine") && Differ.PrepareStringForDiff(line).Length > 4)
                 {
 //                    Console.WriteLine($"Adding {line}");
-                    dialogues.Add(new MangaGamerDialogue(lineNumber, line));
+                    dialogues.Add(new MangaGamerDialogue(lineNumber, line, previousLines));
+                    previousLines.Clear();
+                }
+                else
+                {
+                    previousLines.Add(line);
                 }
 
                 lineNumber += 1;
