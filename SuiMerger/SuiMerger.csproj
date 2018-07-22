@@ -52,6 +52,7 @@
     <Compile Include="DialogueClasses.cs" />
     <Compile Include="PS3DialogueTools.cs" />
     <Compile Include="PS3XMLReader.cs" />
+    <Compile Include="StringUtils.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
