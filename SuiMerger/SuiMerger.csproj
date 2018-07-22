@@ -50,6 +50,7 @@
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="DialogueClasses.cs" />
+    <Compile Include="PS3DialogueTools.cs" />
     <Compile Include="PS3XMLReader.cs" />
   </ItemGroup>
   <ItemGroup>

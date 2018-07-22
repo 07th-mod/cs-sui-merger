@@ -11,6 +11,7 @@ using System.Xml;
 //TODO: for a long sequence of +- which don't match in the diff, just associated them in order (eg line up the - and the + in order)
 //TOOD: Within each block of non-matched lines, do a 'best fit' of all possible combinations (or some other way to match up the lines)
 //      Need to take into account that more than one line may map to each line (usually more than one MangaGamer line maps to a PS3 line)...
+//      Could split ps3 lines by voices/� marker, but a generic method could turn out better.
 
 namespace SuiMerger
 {
