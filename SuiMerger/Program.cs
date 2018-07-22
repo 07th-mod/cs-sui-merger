@@ -7,8 +7,10 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Xml;
 
-//TODO: strip japanese names from ps3 script (where is this in they python code?)
+//TODO: Consider stripping jpanaese punctuation (eg 「山盛り。」 -> 山盛り) | (this is done already): strip japanese names from ps3 script (where is this in they python code?)
 //TODO: for a long sequence of +- which don't match in the diff, just associated them in order (eg line up the - and the + in order)
+//TOOD: Within each block of non-matched lines, do a 'best fit' of all possible combinations (or some other way to match up the lines)
+//      Need to take into account that more than one line may map to each line (usually more than one MangaGamer line maps to a PS3 line)...
 
 namespace SuiMerger
 {
@@ -101,7 +103,6 @@ namespace SuiMerger
             //Set all to false to regenerate the data
             //skip concatenating the separate xml files into one
             bool do_concat = true;
-
 
             if (do_concat)
             { 

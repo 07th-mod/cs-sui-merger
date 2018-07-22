@@ -22,8 +22,7 @@ namespace SuiMerger
             StringBuilder sb = new StringBuilder(s.Length);
             foreach (char c in s)
             {
-                int c_codepoint = (int)c; //NOTE: doesn't work for >16 bit codepoints (> 0xFFFF)
-                if (c_codepoint >= 0x3040 && c_codepoint <= 0x9faf)
+                if (CharIsJapanese(c))
                 {
                     sb.Append(c);
                 }
@@ -32,10 +31,40 @@ namespace SuiMerger
             return sb.ToString();
         }
 
+        public static bool CharIsJapanese(char c)
+        {
+            int c_codepoint = (int)c; //NOTE: doesn't work for >16 bit codepoints (> 0xFFFF)
+            return c_codepoint >= 0x3040 && c_codepoint <= 0x9faf;
+        }
+
         //PS3 lines need to strip the names of the characters etc. from the string.
+        //should probably make this into its own class
         public static string PreparePS3LineForDiff(string s)
         {
+            string retString = s;
 
+            //If line starts with 'r' then it's a text-only line
+            bool textOnlyLine = s[0] == 'r';
+            if(textOnlyLine)
+            {
+                //for now, don't modify the string if it's a text-only line
+            }
+            else
+            {
+                int nonJapaneseCharIndex = 0; //if no non-japanese characters are found, just assume entire string.
+                for(int i = 0; i < s.Length; i++)
+                {
+                    if (!CharIsJapanese(s[i]))
+                    {
+                        nonJapaneseCharIndex = i;
+                        break;
+                    }
+                }
+
+                retString = s.Substring(nonJapaneseCharIndex);
+            }
+
+            return retString;
         }
 
         //Note: this function may not work on files with greater than 1_000_000 lines
@@ -82,11 +111,14 @@ namespace SuiMerger
             {
                 foreach (DialogueBase line in dialogues)
                 {
-                    string preprocessedLine = PrepareStringForDiff(line.data);
+                    string preprocessedLine = line.data;
                     if(isPS3)
                     {
                         preprocessedLine = PreparePS3LineForDiff(preprocessedLine);
                     }
+
+                    preprocessedLine = PrepareStringForDiff(preprocessedLine);
+
                     byte[] stringAsBytes = new UTF8Encoding(true).GetBytes($"{preprocessedLine}\n");
                     fs.Write(stringAsBytes, 0, stringAsBytes.Length);
                 }
@@ -106,7 +138,7 @@ namespace SuiMerger
             WriteListOfDialogueToFile(mangaGamerDialogueList, mangaGamerDiffInputPath, isPS3: false);
 
             //write the diff-prepared ps3 dialogue to a file
-            WriteListOfDialogueToFile(ps3DialogueList, PS3DiffInputPath, isPS3: false);
+            WriteListOfDialogueToFile(ps3DialogueList, PS3DiffInputPath, isPS3: true);
 
             //do the diff
             string diffResult = RunDiffTool(mangaGamerDiffInputPath, PS3DiffInputPath);
