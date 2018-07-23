@@ -6,6 +6,9 @@ using System.Threading.Tasks;
 
 namespace SuiMerger
 {
+	// NOTE: If multiple voices are to be played at the same time, they are separated with a | , for example:
+	// 全員ro45.vS20/03/440300314|S20/06/440600075|S20/04/440400178|S20/05/440500111|S20/08/440800105|S20/11/440700376|S20/09/440900102.「「お疲れさまでした〜〜〜ッ！！！！」」
+
     public class PS3DialogueTools
     {
         //same as SplitPS3String, but removes the name, if present

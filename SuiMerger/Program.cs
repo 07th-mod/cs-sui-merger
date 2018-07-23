@@ -101,6 +101,81 @@ namespace SuiMerger
             return filteredList;
         }
 
+        static void PrintSideBySideDiff(List<MangaGamerDialogue> allMangaGamerDialogue, List<PS3DialogueInstruction> PS3DialogueInstructions, string debug_path_MG, string debug_path_PS3)
+        {
+            //Now all the dialogue objects have associations, iterate through them again and builid a side by side diff for debugging
+
+            IEnumerator<DialogueBase> mgIter = allMangaGamerDialogue.GetEnumerator();
+            mgIter.MoveNext();
+            //IEnumerator<DialogueBase> ps3Iter = PS3DialogueInstructions.GetEnumerator();
+
+            //iterate through mangagamer dialogue until reaching a dialogue which has an association. 
+            //Store it in an array
+            using (FileStream fsMG = File.Open(debug_path_MG, FileMode.Create))
+            {
+                using (FileStream fsPS3 = File.Open(debug_path_PS3, FileMode.Create))
+                {
+                    //iterate through each dialogue in PS3 list
+                    List<string> currentPS3ToSave = new List<string>();
+                    List<string> currentMangaGamerToSave = new List<string>();
+                    foreach (PS3DialogueInstruction ps3Instruction in PS3DialogueInstructions)
+                    {
+                        //add the previous lines (instructions)
+                        currentPS3ToSave.AddRange(ps3Instruction.previousLinesOrInstructions);
+
+                        //add the current PS3 line
+                        StringBuilder associationsSB = new StringBuilder();
+                        foreach (MangaGamerDialogue otherdialogue in ps3Instruction.GetOtherMangaGamerDialogues())
+                        {
+                            associationsSB.Append($"{otherdialogue.ID}, ");
+                        }
+                        currentPS3ToSave.Add($">>>> [{ps3Instruction.ID} -> {associationsSB.ToString()}]: {ps3Instruction.data}");
+
+                        //if the dialogue association is empty, continue
+                        List<MangaGamerDialogue> associatedMangaGamerDialogues = ps3Instruction.GetOtherMangaGamerDialogues();
+                        if (associatedMangaGamerDialogues.Count == 0)
+                        {
+                            continue;
+                        }
+
+                        //Prepare a list of associated manga gamer line numbers
+                        HashSet<int> mangaGamerLinesToGet = new HashSet<int>();
+                        foreach (MangaGamerDialogue mgDialogue in associatedMangaGamerDialogues)
+                        {
+                            mangaGamerLinesToGet.Add(mgDialogue.ID);
+                        }
+
+                        //iterate through the list of mgDialogues until all IDs in the above list have been seen.
+                        while (mgIter.Current != null)
+                        {
+                            //process the current object
+                            if (mangaGamerLinesToGet.Contains(mgIter.Current.ID))
+                            {
+                                mangaGamerLinesToGet.Remove(mgIter.Current.ID);
+                            }
+
+                            currentMangaGamerToSave.AddRange(mgIter.Current.previousLinesOrInstructions);
+                            currentMangaGamerToSave.Add($">>>> [{mgIter.Current.ID} -> {(mgIter.Current.otherDialogue == null ? "NULL" : mgIter.Current.otherDialogue.ID.ToString())}]: {mgIter.Current.data}");
+
+                            mgIter.MoveNext();
+
+                            //if the entire hashset is empty (that is, all the associated MG lines
+                            //of the PS3 line have already been dumped, proceed to dump out lines
+                            if (mangaGamerLinesToGet.Count == 0)
+                            {
+                                break;
+                            }
+                        }
+
+                        //Finally, top-pad the file with enough spaces so they line up (printing could be its own function)
+                        WriteSideBySideTopPad(fsMG, fsPS3, currentMangaGamerToSave, currentPS3ToSave);
+                        currentPS3ToSave.Clear();
+                        currentMangaGamerToSave.Clear();
+                    }
+                }
+            }
+        }
+
         static void Main(string[] args)
         {
             //Tsumi 26 Start- 92565  End - 93391 / Tsumi 25 -Start -  91816  End - 92563
@@ -119,8 +194,8 @@ namespace SuiMerger
 
             const string diff_temp_folder = @"C:\tempsui\temp_diff";                            //OUTPUT folder - must already exist (fix this later)
 
-            const string debug_side_by_side_diff_MG = @"c:\tempsui\debug_side_MG.txt";          //Debug OUTPUT for side-by-side diff
-            const string debug_side_by_side_diff_PS3 = @"c:\tempsui\debug_side_PS3.txt";        //Debug OUTPUT for side-by-side diff
+            const string debug_side_by_side_diff_path_MG = @"c:\tempsui\debug_side_MG.txt";          //Debug OUTPUT for side-by-side diff
+            const string debug_side_by_side_diff_path_PS3 = @"c:\tempsui\debug_side_PS3.txt";        //Debug OUTPUT for side-by-side diff
 
             //These booleans control how much data should be regenerated each iteration
             //Set all to false to regenerate the data
@@ -133,87 +208,18 @@ namespace SuiMerger
             }
             
             //load all ps3 dialogue instructions from the XML file, then take only the user specified region
-            List<PS3DialogueInstruction> PS3DialogueInstructionsPreFilter = PS3XMLReader.GetPS3DialoguesFromXML(untranslatedXMLFilePath);
-            List<PS3DialogueInstruction> PS3DialogueInstructions = GetFilteredPS3Instructions(PS3DialogueInstructionsPreFilter, regionStart, regionEnd);
+            List<PS3DialogueInstruction> pS3DialogueInstructionsPreFilter = PS3XMLReader.GetPS3DialoguesFromXML(untranslatedXMLFilePath);
+            List<PS3DialogueInstruction> pS3DialogueInstructions = GetFilteredPS3Instructions(pS3DialogueInstructionsPreFilter, regionStart, regionEnd);
 
             //load all the mangagamer lines form the mangagamer file
             List<MangaGamerDialogue> allMangaGamerDialogue = MangaGamerScriptReader.GetDialogueLinesFromMangaGamerScript(mangagamerScript);
 
             //Diff the dialogue
-            Differ.DoDiff(diff_temp_folder, allMangaGamerDialogue, PS3DialogueInstructions);
+            Differ.DoDiff(diff_temp_folder, allMangaGamerDialogue, pS3DialogueInstructions);
 
-            //Now all the dialogue objects have associations, iterate through them again and builid a side by side diff for debugging
+            //DEBUG: generate the side-by-side diff
+            PrintSideBySideDiff(allMangaGamerDialogue, pS3DialogueInstructions, debug_side_by_side_diff_path_MG, debug_side_by_side_diff_path_PS3);
 
-            IEnumerator<DialogueBase> mgIter = allMangaGamerDialogue.GetEnumerator();
-            mgIter.MoveNext();
-            //IEnumerator<DialogueBase> ps3Iter = PS3DialogueInstructions.GetEnumerator();
-
-            //iterate through mangagamer dialogue until reaching a dialogue which has an association. 
-            //Store it in an array
-            using (FileStream fsMG = File.Open(debug_side_by_side_diff_MG, FileMode.Create))
-            {
-                using (FileStream fsPS3 = File.Open(debug_side_by_side_diff_PS3, FileMode.Create))
-                {
-                    //iterate through each dialogue in PS3 list
-                    List<string> currentPS3ToSave = new List<string>();
-                    List<string> currentMangaGamerToSave = new List<string>();
-                    foreach(PS3DialogueInstruction ps3Instruction in PS3DialogueInstructions)
-                    {
-                        //add the previous lines (instructions)
-                        currentPS3ToSave.AddRange(ps3Instruction.previousLinesOrInstructions);
-
-                        //add the current PS3 line
-                        StringBuilder associationsSB = new StringBuilder();
-                        foreach(MangaGamerDialogue otherdialogue in ps3Instruction.GetOtherMangaGamerDialogues())
-                        {
-                            associationsSB.Append($"{otherdialogue.ID}, ");
-                        }                            
-                        currentPS3ToSave.Add($">>>> [{ps3Instruction.ID} -> {associationsSB.ToString()}]: {ps3Instruction.data}");
-                        
-                        //if the dialogue association is empty, continue
-                        List<MangaGamerDialogue> associatedMangaGamerDialogues = ps3Instruction.GetOtherMangaGamerDialogues();
-                        if (associatedMangaGamerDialogues.Count == 0)
-                        {
-                            continue;
-                        }
-
-                        //Prepare a list of associated manga gamer line numbers
-                        HashSet<int> mangaGamerLinesToGet = new HashSet<int>();
-                        foreach(MangaGamerDialogue mgDialogue in associatedMangaGamerDialogues)
-                        {
-                            mangaGamerLinesToGet.Add(mgDialogue.ID);
-                        }
-
-                        //iterate through the list of mgDialogues until all IDs in the above list have been seen.
-                        while(mgIter.Current != null)
-                        {
-                            //process the current object
-                            if(mangaGamerLinesToGet.Contains(mgIter.Current.ID))
-                            {
-                                mangaGamerLinesToGet.Remove(mgIter.Current.ID);
-                            }
-
-                            currentMangaGamerToSave.AddRange(mgIter.Current.previousLinesOrInstructions);
-                            currentMangaGamerToSave.Add($">>>> [{mgIter.Current.ID} -> {(mgIter.Current.otherDialogue == null ? "NULL" : mgIter.Current.otherDialogue.ID.ToString())}]: {mgIter.Current.data}");
-
-                            mgIter.MoveNext();
-
-                            //if the entire hashset is empty (that is, all the associated MG lines
-                            //of the PS3 line have already been dumped, proceed to dump out lines
-                            if (mangaGamerLinesToGet.Count == 0)
-                            {
-                                break;
-                            }                            
-                        }
-
-                        //Finally, top-pad the file with enough spaces so they line up (printing could be its own function)
-                        WriteSideBySideTopPad(fsMG, fsPS3, currentMangaGamerToSave, currentPS3ToSave);
-                        currentPS3ToSave.Clear();
-                        currentMangaGamerToSave.Clear();
-                    }
-                }
-            }
-            
             Console.WriteLine("\n\nProgram Finished!");
             Console.ReadLine();
 
