@@ -14,7 +14,7 @@ namespace SuiMerger
             this.otherDialogue = other;
 
             if (other != null)
-            { 
+            {
                 other.otherDialogue = this;
             }
         }
@@ -52,6 +52,28 @@ namespace SuiMerger
         public List<MangaGamerDialogue> GetOtherMangaGamerDialogues()
         {
             return new List<MangaGamerDialogue>(otherMangaGamerDialogues);
+        }
+    }
+
+    //should really convert all these classes to things which implement interfaces...
+    public class PS3DialogueFragment : DialogueBase
+    {
+        public PS3DialogueInstruction parent;
+        public bool firstFragment;//not used
+        public PS3DialogueFragment previousFragmentInSeries;
+
+        public PS3DialogueFragment(PS3DialogueInstruction parent, string dataFragment, bool firstFragment, PS3DialogueFragment previousFragmentInSeries)
+        {
+            this.parent = parent;
+            this.data = dataFragment;
+            this.firstFragment = firstFragment;
+            this.previousFragmentInSeries = previousFragmentInSeries;
+
+            this.previousLinesOrInstructions = new List<string>();
+            if(firstFragment)
+            {
+                this.previousLinesOrInstructions = parent.previousLinesOrInstructions;
+            }
         }
     }
 

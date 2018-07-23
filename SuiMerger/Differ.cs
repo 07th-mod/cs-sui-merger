@@ -88,7 +88,7 @@ namespace SuiMerger
         //This function performs the diff given the two lists of dialogue.
         //It then UPDATES the values in the mangaGamerDialogueList and the ps3DialogueList (the DialogueBase.other value is updated on each dialogue object!)
         //If a dialogue cannot be associated, it is set to NULL.
-        public static void DoDiff(string tempFolderPath, List<MangaGamerDialogue> mangaGamerDialogueList, List<PS3DialogueInstruction> ps3DialogueList)
+        public static List<PS3DialogueFragment> DoDiff(string tempFolderPath, List<MangaGamerDialogue> mangaGamerDialogueList, List<PS3DialogueInstruction> ps3DialogueList)
         {
             //Convert PS3 Dialogue list into list of subsections before performing diff - this can be re-assembled later!
             string mangaGamerDiffInputPath = Path.Combine(tempFolderPath, "diffInputA.txt");
@@ -96,15 +96,18 @@ namespace SuiMerger
             string diffOutputPath = Path.Combine(tempFolderPath, "diffOutput.txt");
 
             //Generate dummy mangaGamerDialogues here
-            List<PS3DialogueInstruction> dummyPS3Instructions = new List<PS3DialogueInstruction>();
+            List<PS3DialogueFragment> dummyPS3Instructions = new List<PS3DialogueFragment>();
             int ps3DialogueIndex = 0;
             foreach (PS3DialogueInstruction ps3Dialogue in ps3DialogueList)
             {
                 List<string> splitDialogueStrings = PS3DialogueTools.SplitPS3StringNoNames(ps3Dialogue.data);
-                foreach(string splitDialogueString in splitDialogueStrings)
+                PS3DialogueFragment previousPS3DialogueFragment = null;
+                for (int i = 0; i < splitDialogueStrings.Count; i++)
                 {
                     //dummy instructions index into the ps3DialogueList (for now...)
-                    dummyPS3Instructions.Add(new PS3DialogueInstruction(ps3DialogueIndex, ps3Dialogue.dlgtype, splitDialogueString, new List<string>()));
+                    PS3DialogueFragment ps3DialogueFragment = new PS3DialogueFragment(ps3Dialogue, splitDialogueStrings[i], i == 0, previousPS3DialogueFragment);
+                    dummyPS3Instructions.Add(ps3DialogueFragment);
+                   previousPS3DialogueFragment = ps3DialogueFragment;
                 }
                 ps3DialogueIndex++;
             }
@@ -147,11 +150,17 @@ namespace SuiMerger
                     char lineType = line[0];
                     if(lineType == ' ') //lines match
                     {
-                        PS3DialogueInstruction dummyPS3Instruction = dummyPS3Instructions[ps3Index];
-                        PS3DialogueInstruction truePS3Instruction = ps3DialogueList[dummyPS3Instruction.ID];
-                        mangaGamerDialogueList[mgIndex].Associate(truePS3Instruction); //the ID is reused to index into ps3DialogueList - fix this later!
-                        truePS3Instruction.Add(mangaGamerDialogueList[mgIndex]);
-                        Console.WriteLine($"Line {mangaGamerDialogueList[mgIndex].ID} of mangagamer associates with PS3 ID {truePS3Instruction.ID}");
+                        PS3DialogueFragment dummyPS3Instruction = dummyPS3Instructions[ps3Index];
+                        MangaGamerDialogue currentMangaGamer = mangaGamerDialogueList[mgIndex];
+
+                        //associate the fragment with the mangagamer dialogue
+                        currentMangaGamer.Associate(dummyPS3Instruction);
+                        
+
+                        //PS3DialogueInstruction truePS3Instruction = ps3DialogueList[dummyPS3Instruction.ID];
+                        //mangaGamerDialogueList[mgIndex].Associate(dummyPS3Instruction.parent); //the ID is reused to index into ps3DialogueList - fix this later!
+                        //truePS3Instruction.Add(mangaGamerDialogueList[mgIndex]);
+                        //Console.WriteLine($"Line {mangaGamerDialogueList[mgIndex].ID} of mangagamer associates with PS3 ID {truePS3Instruction.ID}");
 
                         mgIndex++;
                         ps3Index++;
@@ -168,6 +177,8 @@ namespace SuiMerger
                     }
                 }
             }
+
+            return dummyPS3Instructions;
         }
     }
 }
