@@ -144,6 +144,55 @@ namespace SuiMerger
             }
         }
 
+        static void SaveMergedMGScript(List<AlignmentPoint> alignmentPoints, string outputPath)
+        {
+            using (FileStream fsOut = File.Open(outputPath, FileMode.Create))
+            {
+                //iterate through each dialogue in PS3 list
+                List<string> currentPS3ToSave = new List<string>();
+                List<string> currentMangaGamerToSave = new List<string>();
+
+                foreach (AlignmentPoint alignmentPoint in alignmentPoints)
+                {
+                    if (alignmentPoint.ps3DialogFragment != null)
+                    {
+                        PS3DialogueFragment ps3 = alignmentPoint.ps3DialogFragment;
+                        currentPS3ToSave.AddRange(ps3.previousLinesOrInstructions);
+                        currentPS3ToSave.Add($">>>> [{ps3.ID}.{ps3.fragmentID} -> {(ps3.otherDialogue == null ? "NULL" : ps3.otherDialogue.ID.ToString())}]: {ps3.data}");
+                    }
+
+                    if (alignmentPoint.mangaGamerDialogue != null)
+                    {
+                        MangaGamerDialogue mg = alignmentPoint.mangaGamerDialogue;
+                        currentMangaGamerToSave.AddRange(mg.previousLinesOrInstructions);
+                        currentMangaGamerToSave.Add(mg.data);
+                    }
+
+                    if (alignmentPoint.ps3DialogFragment != null && alignmentPoint.mangaGamerDialogue != null)
+                    {
+                        WriteAssociatedPS3StringChunksFormatted(fsOut, currentMangaGamerToSave, currentPS3ToSave);
+
+                        currentPS3ToSave.Clear();
+                        currentMangaGamerToSave.Clear();
+                    }
+                }
+
+                //write out any leftover lines
+                WriteAssociatedPS3StringChunksFormatted(fsOut, currentMangaGamerToSave, currentPS3ToSave);
+            }
+        }
+
+        static void WriteAssociatedPS3StringChunksFormatted(FileStream fsOut, List<string> currentMangaGamerToSave, List<string> currentPS3ToSave)
+        {
+            StringUtils.WriteStringListRegion(fsOut, currentMangaGamerToSave, true, 0, currentMangaGamerToSave.Count - 1);
+
+            StringUtils.WriteString(fsOut, "-------------------------------------- START PS3 ----------------------------------------", true);
+            StringUtils.WriteStringList(fsOut, currentPS3ToSave, true);
+            StringUtils.WriteString(fsOut, "--------------------------------------  END PS3 -----------------------------------------", true);
+
+            StringUtils.WriteStringListRegion(fsOut, currentMangaGamerToSave, true, currentMangaGamerToSave.Count - 1, currentMangaGamerToSave.Count);
+        }
+
         static void Main(string[] args)
         {
             //Tsumi 26 Start- 92565  End - 93391 / Tsumi 25 -Start -  91816  End - 92563
@@ -159,6 +208,7 @@ namespace SuiMerger
             const string untranslatedXMLFilePath = @"c:\tempsui\sui_xml_NOT_translated.xml";    //output/input - ps3 xml as a single fiile
             //const string mangagamerScript = @"C:\tempsui\example_scripts\onik_001.txt";
             const string mangagamerScript = @"C:\tempsui\example_scripts\tsumi_025_3.txt";      //Input mangagamer script
+            const string mergedOutput = @"C:\tempsui\mg_merged.txt";      //merged output script
 
             const string diff_temp_folder = @"C:\tempsui\temp_diff";                            //OUTPUT folder - must already exist (fix this later)
 
@@ -187,6 +237,9 @@ namespace SuiMerger
 
             //DEBUG: generate the side-by-side diff
             PrintSideBySideDiff(alignmentPoints, debug_side_by_side_diff_path_MG, debug_side_by_side_diff_path_PS3);
+
+            //Insert PS3 instructions
+            SaveMergedMGScript(alignmentPoints, mergedOutput);
 
             Console.WriteLine("\n\nProgram Finished!");
             Console.ReadLine();

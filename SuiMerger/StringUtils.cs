@@ -21,28 +21,37 @@ namespace SuiMerger
             return c_codepoint <= 0xFF;
         }
 
-        public static void WriteString(FileStream fs, string s)
+        public static void WriteString(FileStream fs, string s, bool forceNewline=false)
         {
+            if(forceNewline)
+            {
+                s = s.TrimEnd() + "\n";
+            }
+
             byte[] stringAsBytes = new UTF8Encoding(true).GetBytes(s);
             fs.Write(stringAsBytes, 0, stringAsBytes.Length);
         }
 
         public static void WriteStringList(FileStream fs, IEnumerable<string> strings, bool forceNewline)
         {
-            if (forceNewline)
+            foreach (string s in strings)
             {
-                foreach (string s in strings)
-                {
-                    WriteString(fs, s.TrimEnd() + '\n');
-                }
-            }
-            else
-            {
-                foreach (string s in strings)
-                {
-                    WriteString(fs, s);
-                }
+                WriteString(fs, s, forceNewline);
             }
         }
+
+        public static void WriteStringListRegion(FileStream fs, IEnumerable<string> strings, bool forceNewline, int startIndex, int nonInclusiveLastIndex)
+        {
+            int i = 0;
+            foreach (string s in strings)
+            {
+                if (i >= startIndex && i < nonInclusiveLastIndex)
+                {
+                    WriteString(fs, s, forceNewline);
+                }
+                i++;
+            }
+        }
+
     }
 }
