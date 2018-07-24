@@ -59,18 +59,19 @@ namespace SuiMerger
     public class PS3DialogueFragment : DialogueBase
     {
         public PS3DialogueInstruction parent;
-        public bool firstFragment;//not used
+        public int fragmentID;
         public PS3DialogueFragment previousFragmentInSeries;
 
-        public PS3DialogueFragment(PS3DialogueInstruction parent, string dataFragment, bool firstFragment, PS3DialogueFragment previousFragmentInSeries)
+        public PS3DialogueFragment(PS3DialogueInstruction parent, string dataFragment, int fragmentID, PS3DialogueFragment previousFragmentInSeries)
         {
             this.parent = parent;
             this.data = dataFragment;
-            this.firstFragment = firstFragment;
+            this.fragmentID = fragmentID;
             this.previousFragmentInSeries = previousFragmentInSeries;
+            this.ID = parent.ID; // only for debugging
 
             this.previousLinesOrInstructions = new List<string>();
-            if(firstFragment)
+            if(fragmentID == 0)
             {
                 this.previousLinesOrInstructions = parent.previousLinesOrInstructions;
             }
@@ -88,4 +89,18 @@ namespace SuiMerger
             this.previousLinesOrInstructions.AddRange(previousLines);
         }
     }
+
+    public class AlignmentPoint
+    {
+        public PS3DialogueFragment ps3DialogFragment;
+        public MangaGamerDialogue mangaGamerDialogue;
+
+        public AlignmentPoint(MangaGamerDialogue mg, PS3DialogueFragment p)
+        {
+            mangaGamerDialogue = mg;
+            ps3DialogFragment = p;
+        }
+    }
+        
+
 }

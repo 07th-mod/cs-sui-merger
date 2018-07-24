@@ -88,7 +88,7 @@ namespace SuiMerger
         //This function performs the diff given the two lists of dialogue.
         //It then UPDATES the values in the mangaGamerDialogueList and the ps3DialogueList (the DialogueBase.other value is updated on each dialogue object!)
         //If a dialogue cannot be associated, it is set to NULL.
-        public static List<PS3DialogueFragment> DoDiff(string tempFolderPath, List<MangaGamerDialogue> mangaGamerDialogueList, List<PS3DialogueInstruction> ps3DialogueList)
+        public static List<PS3DialogueFragment> DoDiff(string tempFolderPath, List<MangaGamerDialogue> mangaGamerDialogueList, List<PS3DialogueInstruction> ps3DialogueList, out List<AlignmentPoint> alignmentPoints)
         {
             //Convert PS3 Dialogue list into list of subsections before performing diff - this can be re-assembled later!
             string mangaGamerDiffInputPath = Path.Combine(tempFolderPath, "diffInputA.txt");
@@ -105,7 +105,7 @@ namespace SuiMerger
                 for (int i = 0; i < splitDialogueStrings.Count; i++)
                 {
                     //dummy instructions index into the ps3DialogueList (for now...)
-                    PS3DialogueFragment ps3DialogueFragment = new PS3DialogueFragment(ps3Dialogue, splitDialogueStrings[i], i == 0, previousPS3DialogueFragment);
+                    PS3DialogueFragment ps3DialogueFragment = new PS3DialogueFragment(ps3Dialogue, splitDialogueStrings[i], i, previousPS3DialogueFragment);
                     dummyPS3Instructions.Add(ps3DialogueFragment);
                    previousPS3DialogueFragment = ps3DialogueFragment;
                 }
@@ -128,6 +128,7 @@ namespace SuiMerger
                 fs.Write(stringAsBytes, 0, stringAsBytes.Length);
             }
 
+            alignmentPoints = new List<AlignmentPoint>();
             using (StringReader reader = new StringReader(diffResult))
             {
                 string line;
@@ -155,8 +156,8 @@ namespace SuiMerger
 
                         //associate the fragment with the mangagamer dialogue
                         currentMangaGamer.Associate(dummyPS3Instruction);
-                        
 
+                        alignmentPoints.Add(new AlignmentPoint(currentMangaGamer, dummyPS3Instruction));
                         //PS3DialogueInstruction truePS3Instruction = ps3DialogueList[dummyPS3Instruction.ID];
                         //mangaGamerDialogueList[mgIndex].Associate(dummyPS3Instruction.parent); //the ID is reused to index into ps3DialogueList - fix this later!
                         //truePS3Instruction.Add(mangaGamerDialogueList[mgIndex]);
@@ -168,11 +169,13 @@ namespace SuiMerger
                     else if(lineType == '+') //only exist in ps3
                     {
                         //ps3DialogueList[ps3Index].Associate(null);
+                        alignmentPoints.Add(new AlignmentPoint(null, dummyPS3Instructions[ps3Index]));
                         ps3Index++;
                     }
                     else if(lineType == '-') //only exist in mangagamer
                     {
                         //mangaGamerDialogueList[mgIndex].Associate(null);
+                        alignmentPoints.Add(new AlignmentPoint(mangaGamerDialogueList[mgIndex], null));
                         mgIndex++;
                     }
                 }
