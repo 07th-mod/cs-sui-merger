@@ -11,6 +11,18 @@ namespace SuiMerger
 
     public class PS3DialogueTools
     {
+        //returns the japanese characters in the string without the name at the front (for voiced lines)
+        //for unvoiced lines it just returns all the japanese characters
+        public static string GetPS3StringNoNames(string s)
+        {
+            StringBuilder sb = new StringBuilder();
+            foreach(string splitJapaneseCharacters in SplitPS3StringNoNames(s))
+            {
+                sb.Append(splitJapaneseCharacters);
+            }
+            return sb.ToString();
+        }
+
         //same as SplitPS3String, but removes the name, if present
         //will fail if 0 length string passed in
         public static List<string> SplitPS3StringNoNames(string s)

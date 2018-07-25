@@ -143,6 +143,7 @@ namespace SuiMerger
                 //a ' ' means linesare the same
                 //a '+' means line is present in PS3 ONLY           (it was 'added' in the ps3 version)
                 //a '-' means line is present in mangagamer ONLY    (it was 'removed' from the ps3 version)
+                List<AlignmentPoint> unmatchedSequence = new List<AlignmentPoint>();
                 int mgIndex = 0;
                 int ps3Index = 0;
                 while ((line = reader.ReadLine()) != null)
@@ -163,6 +164,30 @@ namespace SuiMerger
                         //truePS3Instruction.Add(mangaGamerDialogueList[mgIndex]);
                         //Console.WriteLine($"Line {mangaGamerDialogueList[mgIndex].ID} of mangagamer associates with PS3 ID {truePS3Instruction.ID}");
 
+                        if (unmatchedSequence.Count > 0)
+                        {
+                            InOrderLevenshteinMatcher.DoMatching(unmatchedSequence);
+                            HashSet<int> alreadySeenPS3ParentIDs = new HashSet<int>();
+                            Console.WriteLine("------------------------------------");
+                            foreach (AlignmentPoint ap in unmatchedSequence)
+                            {
+                                if (ap.mangaGamerDialogue != null)
+                                {
+                                    Console.WriteLine($"MG line: {ap.mangaGamerDialogue.data}");
+                                }
+
+                                if (ap.ps3DialogFragment != null)
+                                {
+                                    if(!alreadySeenPS3ParentIDs.Contains(ap.ps3DialogFragment.parent.ID))
+                                    {
+                                        alreadySeenPS3ParentIDs.Add(ap.ps3DialogFragment.parent.ID);
+                                        Console.WriteLine($"PS3 parent [{ap.ps3DialogFragment.parent.ID}]: {ap.ps3DialogFragment.parent.GetPS3StringNoName()}");
+                                    }
+                                    //Console.WriteLine($"PS3 Fragment [{ap.ps3DialogFragment.fragmentID}]: {ap.ps3DialogFragment.data}");
+                                }
+                            }
+                            unmatchedSequence.Clear();
+                        }
                         mgIndex++;
                         ps3Index++;
                     }
@@ -170,12 +195,14 @@ namespace SuiMerger
                     {
                         //ps3DialogueList[ps3Index].Associate(null);
                         alignmentPoints.Add(new AlignmentPoint(null, dummyPS3Instructions[ps3Index]));
+                        unmatchedSequence.Add(alignmentPoints[alignmentPoints.Count - 1]);
                         ps3Index++;
                     }
                     else if(lineType == '-') //only exist in mangagamer
                     {
                         //mangaGamerDialogueList[mgIndex].Associate(null);
                         alignmentPoints.Add(new AlignmentPoint(mangaGamerDialogueList[mgIndex], null));
+                        unmatchedSequence.Add(alignmentPoints[alignmentPoints.Count - 1]);
                         mgIndex++;
                     }
                 }

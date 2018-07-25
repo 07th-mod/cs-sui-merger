@@ -53,6 +53,11 @@ namespace SuiMerger
         {
             return new List<MangaGamerDialogue>(otherMangaGamerDialogues);
         }
+
+        public string GetPS3StringNoName()
+        {
+            return PS3DialogueTools.GetPS3StringNoNames(this.data);
+        }
     }
 
     //should really convert all these classes to things which implement interfaces...
