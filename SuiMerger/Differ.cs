@@ -166,7 +166,8 @@ namespace SuiMerger
 
                         if (unmatchedSequence.Count > 0)
                         {
-                            InOrderLevenshteinMatcher.DoMatching(unmatchedSequence);
+                            List<MangaGamerDialogue> unmatchedMangaGamerArg = new List<MangaGamerDialogue>();
+                            List<PS3DialogueInstruction> unmatchedPS3Instruction = new List<PS3DialogueInstruction>();
                             HashSet<int> alreadySeenPS3ParentIDs = new HashSet<int>();
                             Console.WriteLine("------------------------------------");
                             foreach (AlignmentPoint ap in unmatchedSequence)
@@ -174,18 +175,23 @@ namespace SuiMerger
                                 if (ap.mangaGamerDialogue != null)
                                 {
                                     Console.WriteLine($"MG line: {ap.mangaGamerDialogue.data}");
+                                    unmatchedMangaGamerArg.Add(ap.mangaGamerDialogue);
                                 }
 
                                 if (ap.ps3DialogFragment != null)
                                 {
-                                    if(!alreadySeenPS3ParentIDs.Contains(ap.ps3DialogFragment.parent.ID))
+                                    if (!alreadySeenPS3ParentIDs.Contains(ap.ps3DialogFragment.parent.ID))
                                     {
                                         alreadySeenPS3ParentIDs.Add(ap.ps3DialogFragment.parent.ID);
-                                        Console.WriteLine($"PS3 parent [{ap.ps3DialogFragment.parent.ID}]: {ap.ps3DialogFragment.parent.GetPS3StringNoName()}");
+                                        Console.WriteLine($"PS3 parent of below missing fragments [{ap.ps3DialogFragment.parent.ID}]: {ap.ps3DialogFragment.parent.data}");
+                                        unmatchedPS3Instruction.Add(ap.ps3DialogFragment.parent);
                                     }
-                                    //Console.WriteLine($"PS3 Fragment [{ap.ps3DialogFragment.fragmentID}]: {ap.ps3DialogFragment.data}");
+
+                                    Console.WriteLine($"PS3 child [{ap.ps3DialogFragment.parent.ID}]: {ap.ps3DialogFragment.data}");
                                 }
                             }
+                            InOrderLevenshteinMatcher.DoMatching(unmatchedMangaGamerArg, unmatchedPS3Instruction);
+
                             unmatchedSequence.Clear();
                         }
                         mgIndex++;

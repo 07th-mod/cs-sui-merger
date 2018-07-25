@@ -37,12 +37,15 @@ namespace SuiMerger
         }
 
         //splits a ps3 string containg multiple phrases. This includes the character name, if present
+        //NOTE: the ascii '!' character MIGHT be used to escape normally ascii characters - for example, to have a
+        //literal 'u' in the japanese text, you would do '!u' ? or not?. This has not been added to below because
+        //I'm not sure and it doesn't happen too often (only saw it in !T!I!P!S
         public static string[] SplitPS3String(string s)
         {
             StringBuilder sb = new StringBuilder();
-
             foreach (char c in s)
             {
+
                 if(StringUtils.CharIsASCII(c) || c == '�')
                 {
                     sb.Append('X');
