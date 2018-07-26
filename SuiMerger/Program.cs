@@ -193,8 +193,84 @@ namespace SuiMerger
             StringUtils.WriteStringListRegion(fsOut, currentMangaGamerToSave, true, currentMangaGamerToSave.Count - 1, currentMangaGamerToSave.Count);
         }
 
-        static void Main(string[] args)
+        static void SanityCheckAlignmentPoints(List<AlignmentPoint> alignmentPoints, List<MangaGamerDialogue> allMangaGamerDialogue, List<PS3DialogueFragment> fragments)
         {
+            //check all manga gamer ids present
+            int mgIndex = 0;
+            int ps3Index = 0;
+            foreach (AlignmentPoint ap in alignmentPoints)
+            {
+                if (ap.mangaGamerDialogue != null)
+                {
+                    if (ap.mangaGamerDialogue.ID != allMangaGamerDialogue[mgIndex].ID)
+                    {
+                        throw new Exception("wrong manga gamer dialogue found!");
+                    }
+                    mgIndex += 1;
+                }
+
+                if (ap.ps3DialogFragment != null)
+                {
+                    if (ap.ps3DialogFragment.ID != fragments[ps3Index].ID)
+                    {
+                        throw new Exception("wrong ps3 dialogue found!");
+                    }
+                    ps3Index += 1;
+                }
+            }
+
+            if (mgIndex != allMangaGamerDialogue.Count)
+            {
+                throw new Exception("Some manga gamer dialogue were not present in the alignment points!");
+            }
+
+            if (ps3Index != fragments.Count)
+            {
+                throw new Exception("Some PS3 dialogue were not present in the alignment points!");
+            }
+        }
+
+        static void ProcessSingleFile(string diffTempFolder, string mangagamerScriptPath, List<PS3DialogueInstruction> pS3DialogueInstructionsPreFilter, int regionStart, int regionEnd, string mergedOutputPath)
+        {
+            string debug_side_by_side_diff_path_MG  = Path.Combine(Path.GetFileNameWithoutExtension(mangagamerScriptPath), "debug_side_MG.txt");
+            string debug_side_by_side_diff_path_PS3 = Path.Combine(Path.GetFileNameWithoutExtension(mangagamerScriptPath), "debug_side_PS3.txt");
+
+            List<PS3DialogueInstruction> pS3DialogueInstructions = GetFilteredPS3Instructions(pS3DialogueInstructionsPreFilter, regionStart, regionEnd);
+
+            //load all the mangagamer lines form the mangagamer file
+            List<MangaGamerDialogue> allMangaGamerDialogue = MangaGamerScriptReader.GetDialogueLinesFromMangaGamerScript(mangagamerScriptPath);
+
+            //Diff the dialogue
+            List<AlignmentPoint> alignmentPoints = Differ.DoDiff(diffTempFolder, allMangaGamerDialogue, pS3DialogueInstructions, out List<PS3DialogueFragment> fragments);
+
+            //Sanity check the alignment points by making sure there aren't missing any values
+            SanityCheckAlignmentPoints(alignmentPoints, allMangaGamerDialogue, fragments);
+
+            //DEBUG: generate the side-by-side diff
+            PrintSideBySideDiff(alignmentPoints, debug_side_by_side_diff_path_MG, debug_side_by_side_diff_path_PS3);
+
+            //Insert PS3 instructions
+            SaveMergedMGScript(alignmentPoints, mergedOutputPath);
+        }
+
+        static int Main(string[] args)
+        {
+            MergerConfiguration config = HintParser.ParseTOML("test.toml");
+            if (config == null)
+            {
+                Console.WriteLine("Can't continue - config file is not valid!");
+
+            }
+            else
+            {
+                Console.WriteLine("Config file is valid.");
+            }
+
+
+            Console.ReadLine();
+
+            return 0;
+
             //Tsumi 26 Start- 92565  End - 93391 / Tsumi 25 -Start -  91816  End - 92563
             //THESE RANGES ARE INCLUSIVE!
             int regionStart = 91816;
@@ -212,8 +288,8 @@ namespace SuiMerger
 
             const string diff_temp_folder = @"C:\tempsui\temp_diff";                            //OUTPUT folder - must already exist (fix this later)
 
-            const string debug_side_by_side_diff_path_MG = @"c:\tempsui\debug_side_MG.txt";          //Debug OUTPUT for side-by-side diff
-            const string debug_side_by_side_diff_path_PS3 = @"c:\tempsui\debug_side_PS3.txt";        //Debug OUTPUT for side-by-side diff
+            //const string debug_side_by_side_diff_path_MG = @"c:\tempsui\debug_side_MG.txt";          //Debug OUTPUT for side-by-side diff
+            //const string debug_side_by_side_diff_path_PS3 = @"c:\tempsui\debug_side_PS3.txt";        //Debug OUTPUT for side-by-side diff
 
             //These booleans control how much data should be regenerated each iteration
             //Set all to false to regenerate the data
@@ -227,32 +303,13 @@ namespace SuiMerger
             
             //load all ps3 dialogue instructions from the XML file, then take only the user specified region
             List<PS3DialogueInstruction> pS3DialogueInstructionsPreFilter = PS3XMLReader.GetPS3DialoguesFromXML(untranslatedXMLFilePath);
-            List<PS3DialogueInstruction> pS3DialogueInstructions = GetFilteredPS3Instructions(pS3DialogueInstructionsPreFilter, regionStart, regionEnd);
 
-            //load all the mangagamer lines form the mangagamer file
-            List<MangaGamerDialogue> allMangaGamerDialogue = MangaGamerScriptReader.GetDialogueLinesFromMangaGamerScript(mangagamerScript);
 
-            //Diff the dialogue
-            List<PS3DialogueFragment> fragments = Differ.DoDiff(diff_temp_folder, allMangaGamerDialogue, pS3DialogueInstructions, out List<AlignmentPoint> alignmentPoints);
-
-            //TODO: verify the alignment points aren't missing any values
-
-            //check all manga gamer ids present
-
-            //check all ps3 ids present
-            
-            //check all fragments present?
-
-            //DEBUG: generate the side-by-side diff
-            PrintSideBySideDiff(alignmentPoints, debug_side_by_side_diff_path_MG, debug_side_by_side_diff_path_PS3);
-
-            //Insert PS3 instructions
-            SaveMergedMGScript(alignmentPoints, mergedOutput);
 
             Console.WriteLine("\n\nProgram Finished!");
             Console.ReadLine();
 
-            return;
+            return 0;
         }
     }
 }
