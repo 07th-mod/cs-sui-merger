@@ -85,6 +85,60 @@ namespace SuiMerger
             }
         }
 
+        public static List<AlignmentPoint> GetAlignmentPointsFromMGPS3Array(List<MangaGamerDialogue> rematchedMGs, List<PS3DialogueFragment> rematchedPS3s)
+        {
+            List<AlignmentPoint> returnedAlignmentPoints = new List<AlignmentPoint>();
+
+            IEnumerator<MangaGamerDialogue> rematchedMGsEnumerator = rematchedMGs.GetEnumerator();
+            IEnumerator<PS3DialogueFragment> rematchedPS3sEnumerator = rematchedPS3s.GetEnumerator();
+
+            rematchedMGsEnumerator.MoveNext();
+            rematchedPS3sEnumerator.MoveNext();
+
+            //Continue to iterate if either enumerator has items left
+            while (rematchedMGsEnumerator.Current != null || rematchedPS3sEnumerator.Current != null)
+            {
+                bool mgHasMatch = false;
+                bool ps3HasMatch = false;
+                if(rematchedMGsEnumerator.Current != null)
+                {
+                    if(rematchedMGsEnumerator.Current.otherDialogue == null)
+                    {
+                        returnedAlignmentPoints.Add(new AlignmentPoint(rematchedMGsEnumerator.Current, null));
+                        rematchedMGsEnumerator.MoveNext();
+                    }
+                    else
+                    {
+                        mgHasMatch = true;
+                    }
+                }
+
+                if(rematchedPS3sEnumerator.Current != null)
+                {
+                    if(rematchedPS3sEnumerator.Current.otherDialogue == null)
+                    {
+                        returnedAlignmentPoints.Add(new AlignmentPoint(null, rematchedPS3sEnumerator.Current));
+                        rematchedPS3sEnumerator.MoveNext();
+                    }
+                    else
+                    {
+                        ps3HasMatch = true;
+                    }
+                }
+
+                if(mgHasMatch && ps3HasMatch)
+                {
+                    //the first child shall match the mg line - all other children should have NO match
+                    returnedAlignmentPoints.Add(new AlignmentPoint(rematchedMGsEnumerator.Current, rematchedPS3sEnumerator.Current));
+
+                    rematchedMGsEnumerator.MoveNext();
+                    rematchedPS3sEnumerator.MoveNext();
+                }
+            }
+
+            return returnedAlignmentPoints;
+        }
+
         //This function performs the diff given the two lists of dialogue.
         //It then UPDATES the values in the mangaGamerDialogueList and the ps3DialogueList (the DialogueBase.other value is updated on each dialogue object!)
         //If a dialogue cannot be associated, it is set to NULL.
@@ -158,7 +212,7 @@ namespace SuiMerger
                         //associate the fragment with the mangagamer dialogue
                         currentMangaGamer.Associate(dummyPS3Instruction);
 
-                        alignmentPoints.Add(new AlignmentPoint(currentMangaGamer, dummyPS3Instruction));
+                        
                         //PS3DialogueInstruction truePS3Instruction = ps3DialogueList[dummyPS3Instruction.ID];
                         //mangaGamerDialogueList[mgIndex].Associate(dummyPS3Instruction.parent); //the ID is reused to index into ps3DialogueList - fix this later!
                         //truePS3Instruction.Add(mangaGamerDialogueList[mgIndex]);
@@ -166,31 +220,64 @@ namespace SuiMerger
 
                         if (unmatchedSequence.Count > 0)
                         {
-                            List<MangaGamerDialogue> unmatchedMangaGamerArg = new List<MangaGamerDialogue>();
-                            List<PS3DialogueInstruction> unmatchedPS3Instruction = new List<PS3DialogueInstruction>();
+                            List<MangaGamerDialogue> unmatchedMGs = new List<MangaGamerDialogue>();
+                            List<PS3DialogueFragment> unmatchedPS3Fragments = new List<PS3DialogueFragment>();
+                            List<PS3DialogueInstruction> unmatchedPS3s = new List<PS3DialogueInstruction>();
+
                             HashSet<int> alreadySeenPS3ParentIDs = new HashSet<int>();
+                            Dictionary<int, PS3DialogueFragment> ps3DialogueIDToFirstFragmentMapping = new Dictionary<int, PS3DialogueFragment>();
+
                             Console.WriteLine("------------------------------------");
                             foreach (AlignmentPoint ap in unmatchedSequence)
                             {
                                 if (ap.mangaGamerDialogue != null)
                                 {
                                     Console.WriteLine($"MG line: {ap.mangaGamerDialogue.data}");
-                                    unmatchedMangaGamerArg.Add(ap.mangaGamerDialogue);
+                                    unmatchedMGs.Add(ap.mangaGamerDialogue);
                                 }
 
                                 if (ap.ps3DialogFragment != null)
                                 {
+                                    unmatchedPS3Fragments.Add(ap.ps3DialogFragment);
+
                                     if (!alreadySeenPS3ParentIDs.Contains(ap.ps3DialogFragment.parent.ID))
                                     {
+                                        ps3DialogueIDToFirstFragmentMapping.Add(ap.ps3DialogFragment.parent.ID, ap.ps3DialogFragment);
                                         alreadySeenPS3ParentIDs.Add(ap.ps3DialogFragment.parent.ID);
                                         Console.WriteLine($"PS3 parent of below missing fragments [{ap.ps3DialogFragment.parent.ID}]: {ap.ps3DialogFragment.parent.data}");
-                                        unmatchedPS3Instruction.Add(ap.ps3DialogFragment.parent);
+                                        unmatchedPS3s.Add(ap.ps3DialogFragment.parent);
                                     }
 
                                     Console.WriteLine($"PS3 child [{ap.ps3DialogFragment.parent.ID}]: {ap.ps3DialogFragment.data}");
                                 }
                             }
-                            InOrderLevenshteinMatcher.DoMatching(unmatchedMangaGamerArg, unmatchedPS3Instruction);
+
+                            //Try and match the unmatched lines
+                            List<InOrderLevenshteinMatcher.LevenshteinResult> greedyMatchResults = InOrderLevenshteinMatcher.DoMatching(unmatchedMGs, unmatchedPS3s);
+
+                            //Use the match results to set associations
+                            foreach (var result in greedyMatchResults)
+                            {
+                                MangaGamerDialogue mgToAssign = unmatchedMGs[result.mgIndex];
+                                //want to get the first ps3 fragment associated with the Dialogue. Use hashmap we made earlier.
+                                PS3DialogueFragment ps3FragmentToAssign = ps3DialogueIDToFirstFragmentMapping[unmatchedPS3s[result.ps3Index].ID];
+                                mgToAssign.Associate(ps3FragmentToAssign);
+                            }
+
+                            //iterate through the list and add alignment points appropriately
+                            List<AlignmentPoint> reAssociatedAlignmentPoints = GetAlignmentPointsFromMGPS3Array(unmatchedMGs, unmatchedPS3Fragments);
+                            
+                            //Debug: Print out re-assigned alignment points for debugging
+                            foreach(AlignmentPoint ap in reAssociatedAlignmentPoints)
+                            {
+                                Console.WriteLine(ap.ToString());
+                            }
+
+                            //add the backlog of re-matched alignment points to the output 
+                            alignmentPoints.AddRange(reAssociatedAlignmentPoints);
+
+                            //add the just found instruction
+                            alignmentPoints.Add(new AlignmentPoint(currentMangaGamer, dummyPS3Instruction));
 
                             unmatchedSequence.Clear();
                         }
@@ -200,15 +287,17 @@ namespace SuiMerger
                     else if(lineType == '+') //only exist in ps3
                     {
                         //ps3DialogueList[ps3Index].Associate(null);
-                        alignmentPoints.Add(new AlignmentPoint(null, dummyPS3Instructions[ps3Index]));
-                        unmatchedSequence.Add(alignmentPoints[alignmentPoints.Count - 1]);
+                        PS3DialogueFragment currentDialog = dummyPS3Instructions[ps3Index];
+                        //alignmentPoints.Add(new AlignmentPoint(null,currentDialog)); // REMOVE when implementing matching
+                        unmatchedSequence.Add(new AlignmentPoint(null, currentDialog));
                         ps3Index++;
                     }
                     else if(lineType == '-') //only exist in mangagamer
                     {
                         //mangaGamerDialogueList[mgIndex].Associate(null);
-                        alignmentPoints.Add(new AlignmentPoint(mangaGamerDialogueList[mgIndex], null));
-                        unmatchedSequence.Add(alignmentPoints[alignmentPoints.Count - 1]);
+                        MangaGamerDialogue currentDialog = mangaGamerDialogueList[mgIndex];
+                        //alignmentPoints.Add(new AlignmentPoint(currentDialog , null)); // REMOVE when implementing matching
+                        unmatchedSequence.Add(new AlignmentPoint(currentDialog, null));
                         mgIndex++;
                     }
                 }

@@ -8,7 +8,7 @@ namespace SuiMerger
 {
     class InOrderLevenshteinMatcher
     {
-        class LevenshteinResult : IComparable<LevenshteinResult>
+        public class LevenshteinResult : IComparable<LevenshteinResult>
         {
             public int mgIndex;
             public int ps3Index;
@@ -114,7 +114,10 @@ namespace SuiMerger
             return greedyLevenshteinSubset;
         }
 
-        public static List<AlignmentPoint> DoMatching(List<MangaGamerDialogue> unmatchedmgs, List<PS3DialogueInstruction> unmatchedPS3)
+        //Note: the 'unmatchedps3fragment' argument is only an output, and this function fills in the "otherDialogue" property if applicable.
+        //the function also fills in the "otherDialogue" property of the unmatchedmgs
+        //TODO: move the ps3fragment-> full dialogue convrsion into this function, or make a separate function
+        public static List<LevenshteinResult> DoMatching(List<MangaGamerDialogue> unmatchedmgs, List<PS3DialogueInstruction> unmatchedPS3)
         {
             List<LevenshteinResult> allLevenshteinResultsSorted = GetAllLevenshteinSorted(unmatchedmgs, unmatchedPS3);
 
@@ -129,11 +132,19 @@ namespace SuiMerger
             //which is not allowed (eg line 1 of mg matches to line 2 of ps3, but line 2 of mg matches line 1 of ps3).
             List<LevenshteinResult> greedyMatchResults = GetBestMatchCombination(allLevenshteinResultsSorted, unmatchedmgs.Count, unmatchedPS3.Count);
 
-            //After sorting complete, don't forget to print/save lines which did not match!
+            //foreach (LevenshteinResult result in greedyMatchResults)
+            //{
+            //    MangaGamerDialogue mgToAssign = unmatchedmgs[result.mgIndex];
+            //    PS3DialogueInstruction ps3DialogueToAssign = unmatchedPS3[result.ps3Index];
+            //    PS3DialogueFragment ps3FragmentToAssign = ps3DialogueToAssign.
+            //    mgToAssign.
+            //}
+
+            //After sorting complete, don't forget to print/save lines which did not match! Can do this by scanning which lines still have association=null
 
 
             //Choose the best match, preserving order
-            return new List<AlignmentPoint>();
+            return greedyMatchResults;
         }
     }
 }

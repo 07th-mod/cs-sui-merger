@@ -32,6 +32,7 @@ namespace SuiMerger
         public int dlgtype;
         public int debug_length;
         private List<MangaGamerDialogue> otherMangaGamerDialogues = new List<MangaGamerDialogue>();
+        //public List<PS3DialogueFragment> children = new List<PS3DialogueFragment>();
 
         public PS3DialogueInstruction(int num, int dlgtype, string data, List<string> previousXML, bool autoTranslate = true)
         {
@@ -73,13 +74,22 @@ namespace SuiMerger
             this.data = dataFragment;
             this.fragmentID = fragmentID;
             this.previousFragmentInSeries = previousFragmentInSeries;
-            this.ID = parent.ID; // only for debugging
-
+            this.ID = parent.ID;
+            
             this.previousLinesOrInstructions = new List<string>();
+
+            //only associate the first fragment with previous instructions of parent
             if(fragmentID == 0)
             {
                 this.previousLinesOrInstructions = parent.previousLinesOrInstructions;
             }
+
+            //parent.children.Add(this);
+        }
+
+        public override string ToString()
+        {
+            return $"[{ID}.{fragmentID} -> {(otherDialogue == null ? "NULL" : otherDialogue.ID.ToString())}]: {data}";
         }
     }
 
@@ -93,6 +103,11 @@ namespace SuiMerger
             this.previousLinesOrInstructions = new List<string>();
             this.previousLinesOrInstructions.AddRange(previousLines);
         }
+
+        public override string ToString()
+        {
+            return $"[{ID} -> {(otherDialogue == null ? "NULL" : otherDialogue.ID.ToString())}]: {data}";
+        }
     }
 
     public class AlignmentPoint
@@ -104,6 +119,11 @@ namespace SuiMerger
         {
             mangaGamerDialogue = mg;
             ps3DialogFragment = p;
+        }
+
+        public override string ToString()
+        {
+            return $"[[{(mangaGamerDialogue == null ? "NULL" : mangaGamerDialogue.ToString())}]] <-> [[{(ps3DialogFragment == null ? "NULL" : ps3DialogFragment.ToString())}]]";
         }
     }
         
