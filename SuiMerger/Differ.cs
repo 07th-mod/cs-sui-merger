@@ -71,7 +71,7 @@ namespace SuiMerger
         static public void WriteListOfDialogueToFile(IEnumerable<DialogueBase> dialogues, string outputFileName, bool isPS3)
         {
             //write the diff-prepared manga gamer dialogue to a file
-            using (FileStream fs = new FileStream(outputFileName, FileMode.Create))
+            using (FileStream fs = FileUtils.CreateDirectoriesAndOpen(outputFileName, FileMode.Create))
             {
                 foreach (DialogueBase line in dialogues)
                 {
@@ -206,12 +206,12 @@ namespace SuiMerger
         //This function performs the diff given the two lists of dialogue.
         //It then UPDATES the values in the mangaGamerDialogueList and the ps3DialogueList (the DialogueBase.other value is updated on each dialogue object!)
         //If a dialogue cannot be associated, it is set to NULL.
-        public static List<AlignmentPoint> DoDiff(string tempFolderPath, List<MangaGamerDialogue> mangaGamerDialogueList, List<PS3DialogueInstruction> ps3DialogueList, out List<PS3DialogueFragment> dummyPS3Instructions)
+        public static List<AlignmentPoint> DoDiff(string tempFolderPath, List<MangaGamerDialogue> mangaGamerDialogueList, List<PS3DialogueInstruction> ps3DialogueList, out List<PS3DialogueFragment> dummyPS3Instructions, string debugFilenamePrefix = "")
         {
             //Convert PS3 Dialogue list into list of subsections before performing diff - this can be re-assembled later!
-            string mangaGamerDiffInputPath = Path.Combine(tempFolderPath, "diffInputA.txt");
-            string PS3DiffInputPath = Path.Combine(tempFolderPath, "diffInputB.txt");
-            string diffOutputPath = Path.Combine(tempFolderPath, "diffOutput.txt");
+            string mangaGamerDiffInputPath = Path.Combine(tempFolderPath, debugFilenamePrefix + "_diffInputA.txt");
+            string PS3DiffInputPath = Path.Combine(tempFolderPath, debugFilenamePrefix + "_diffInputB.txt");
+            string diffOutputPath = Path.Combine(tempFolderPath, debugFilenamePrefix + "_diffOutput.txt");
 
             //Generate dummy mangaGamerDialogues here
             dummyPS3Instructions = new List<PS3DialogueFragment>();

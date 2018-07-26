@@ -103,9 +103,9 @@ namespace SuiMerger
 
         static void PrintSideBySideDiff(List<AlignmentPoint> alignmentPoints, string debug_path_MG, string debug_path_PS3)
         {
-            using (FileStream fsMG = File.Open(debug_path_MG, FileMode.Create))
+            using (FileStream fsMG = FileUtils.CreateDirectoriesAndOpen(debug_path_MG, FileMode.Create))
             {
-                using (FileStream fsPS3 = File.Open(debug_path_PS3, FileMode.Create))
+                using (FileStream fsPS3 = FileUtils.CreateDirectoriesAndOpen(debug_path_PS3, FileMode.Create))
                 {
                     //iterate through each dialogue in PS3 list
                     List<string> currentPS3ToSave = new List<string>();
@@ -146,7 +146,7 @@ namespace SuiMerger
 
         static void SaveMergedMGScript(List<AlignmentPoint> alignmentPoints, string outputPath)
         {
-            using (FileStream fsOut = File.Open(outputPath, FileMode.Create))
+            using (FileStream fsOut = FileUtils.CreateDirectoriesAndOpen(outputPath, FileMode.Create))
             {
                 //iterate through each dialogue in PS3 list
                 List<string> currentPS3ToSave = new List<string>();
@@ -230,18 +230,26 @@ namespace SuiMerger
             }
         }
 
-        static void ProcessSingleFile(string diffTempFolder, string mangagamerScriptPath, List<PS3DialogueInstruction> pS3DialogueInstructionsPreFilter, int regionStart, int regionEnd, string mergedOutputPath)
+        static void PauseThenErrorExit()
         {
-            string debug_side_by_side_diff_path_MG  = Path.Combine(Path.GetFileNameWithoutExtension(mangagamerScriptPath), "debug_side_MG.txt");
-            string debug_side_by_side_diff_path_PS3 = Path.Combine(Path.GetFileNameWithoutExtension(mangagamerScriptPath), "debug_side_PS3.txt");
+            Console.ReadLine();
+            Environment.Exit(-1);
+        }
 
-            List<PS3DialogueInstruction> pS3DialogueInstructions = GetFilteredPS3Instructions(pS3DialogueInstructionsPreFilter, regionStart, regionEnd);
+        static void ProcessSingleFile(List<PS3DialogueInstruction> pS3DialogueInstructionsPreFilter, MergerConfiguration config, InputInfo mgInfo)
+        {
+            string pathNoExt = Path.GetFileNameWithoutExtension(mgInfo.path);
+
+            string debug_side_by_side_diff_path_MG  = Path.Combine(config.temp_folder, pathNoExt + "_debug_side_MG.txt");
+            string debug_side_by_side_diff_path_PS3 = Path.Combine(config.temp_folder, pathNoExt + "_debug_side_PS3.txt");
+
+            List<PS3DialogueInstruction> pS3DialogueInstructions = GetFilteredPS3Instructions(pS3DialogueInstructionsPreFilter, mgInfo.ps3_regions[0][0], mgInfo.ps3_regions[0][1]);
 
             //load all the mangagamer lines form the mangagamer file
-            List<MangaGamerDialogue> allMangaGamerDialogue = MangaGamerScriptReader.GetDialogueLinesFromMangaGamerScript(mangagamerScriptPath);
+            List<MangaGamerDialogue> allMangaGamerDialogue = MangaGamerScriptReader.GetDialogueLinesFromMangaGamerScript(mgInfo.path);
 
             //Diff the dialogue
-            List<AlignmentPoint> alignmentPoints = Differ.DoDiff(diffTempFolder, allMangaGamerDialogue, pS3DialogueInstructions, out List<PS3DialogueFragment> fragments);
+            List<AlignmentPoint> alignmentPoints = Differ.DoDiff(config.temp_folder, allMangaGamerDialogue, pS3DialogueInstructions, out List<PS3DialogueFragment> fragments, debugFilenamePrefix: pathNoExt);
 
             //Sanity check the alignment points by making sure there aren't missing any values
             SanityCheckAlignmentPoints(alignmentPoints, allMangaGamerDialogue, fragments);
@@ -250,61 +258,51 @@ namespace SuiMerger
             PrintSideBySideDiff(alignmentPoints, debug_side_by_side_diff_path_MG, debug_side_by_side_diff_path_PS3);
 
             //Insert PS3 instructions
-            SaveMergedMGScript(alignmentPoints, mergedOutputPath);
+            SaveMergedMGScript(alignmentPoints, Path.Combine(config.output_folder, pathNoExt + "_merged.txt"));
         }
 
         static int Main(string[] args)
         {
+            //MUST set this so that diff tool can output proper unicode (otherwise output is scrambled)
+            //and so can see japanese characters (you might need to change your console font too to MS Gothic or similar)
+            Console.OutputEncoding = System.Text.Encoding.UTF8;
+
             MergerConfiguration config = HintParser.ParseTOML("test.toml");
             if (config == null)
             {
                 Console.WriteLine("Can't continue - config file is not valid!");
-
+                PauseThenErrorExit();
             }
             else
             {
                 Console.WriteLine("Config file is valid.");
             }
+            Directory.SetCurrentDirectory(config.working_directory);
 
-
-            Console.ReadLine();
-
-            return 0;
-
-            //Tsumi 26 Start- 92565  End - 93391 / Tsumi 25 -Start -  91816  End - 92563
-            //THESE RANGES ARE INCLUSIVE!
-            int regionStart = 91816;
-            int regionEnd = 92563;
-
-            //MUST set this so that diff tool can output proper unicode (otherwise output is scrambled)
-            //and so can see japanese characters (you might need to change your console font too to MS Gothic or similar)
-            Console.OutputEncoding = System.Text.Encoding.UTF8;
-            
-            const string separate_xml_folder = @"c:\tempsui\sui_try_merge";                     //input (if merging enabled)
-            const string untranslatedXMLFilePath = @"c:\tempsui\sui_xml_NOT_translated.xml";    //output/input - ps3 xml as a single fiile
-            //const string mangagamerScript = @"C:\tempsui\example_scripts\onik_001.txt";
-            const string mangagamerScript = @"C:\tempsui\example_scripts\tsumi_025_3.txt";      //Input mangagamer script
-            const string mergedOutput = @"C:\tempsui\mg_merged.txt";      //merged output script
-
-            const string diff_temp_folder = @"C:\tempsui\temp_diff";                            //OUTPUT folder - must already exist (fix this later)
-
-            //const string debug_side_by_side_diff_path_MG = @"c:\tempsui\debug_side_MG.txt";          //Debug OUTPUT for side-by-side diff
-            //const string debug_side_by_side_diff_path_PS3 = @"c:\tempsui\debug_side_PS3.txt";        //Debug OUTPUT for side-by-side diff
-
-            //These booleans control how much data should be regenerated each iteration
-            //Set all to false to regenerate the data
-            //skip concatenating the separate xml files into one
-            bool do_concat = false;
-
-            if (do_concat)
-            { 
-                FileConcatenator.MergeFilesInFolder(separate_xml_folder, untranslatedXMLFilePath);
+            //Read in/merge the xml file according to the config
+            string untranslatedXMLFilePath = null;
+            if (File.Exists(config.ps3_xml_path))
+            {
+                untranslatedXMLFilePath = config.ps3_xml_path;
+            }
+            else if(Directory.Exists(config.ps3_xml_path))
+            {
+                FileConcatenator.MergeFilesInFolder(config.ps3_xml_path, config.ps3_merged_output_path);
+                untranslatedXMLFilePath = config.ps3_merged_output_path;
+            }
+            else
+            {
+                Console.WriteLine($"Can't find ps3 input file/folder {Path.GetFullPath(config.ps3_xml_path)}");
+                PauseThenErrorExit();
             }
             
-            //load all ps3 dialogue instructions from the XML file, then take only the user specified region
+            //begin processing
             List<PS3DialogueInstruction> pS3DialogueInstructionsPreFilter = PS3XMLReader.GetPS3DialoguesFromXML(untranslatedXMLFilePath);
 
-
+            foreach(InputInfo inputInfo in config.input)
+            {
+                ProcessSingleFile(pS3DialogueInstructionsPreFilter, config, inputInfo);
+            }
 
             Console.WriteLine("\n\nProgram Finished!");
             Console.ReadLine();
