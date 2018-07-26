@@ -212,12 +212,6 @@ namespace SuiMerger
                         //associate the fragment with the mangagamer dialogue
                         currentMangaGamer.Associate(dummyPS3Instruction);
 
-                        
-                        //PS3DialogueInstruction truePS3Instruction = ps3DialogueList[dummyPS3Instruction.ID];
-                        //mangaGamerDialogueList[mgIndex].Associate(dummyPS3Instruction.parent); //the ID is reused to index into ps3DialogueList - fix this later!
-                        //truePS3Instruction.Add(mangaGamerDialogueList[mgIndex]);
-                        //Console.WriteLine($"Line {mangaGamerDialogueList[mgIndex].ID} of mangagamer associates with PS3 ID {truePS3Instruction.ID}");
-
                         if (unmatchedSequence.Count > 0)
                         {
                             List<MangaGamerDialogue> unmatchedMGs = new List<MangaGamerDialogue>();
@@ -286,17 +280,13 @@ namespace SuiMerger
                     }
                     else if(lineType == '+') //only exist in ps3
                     {
-                        //ps3DialogueList[ps3Index].Associate(null);
                         PS3DialogueFragment currentDialog = dummyPS3Instructions[ps3Index];
-                        //alignmentPoints.Add(new AlignmentPoint(null,currentDialog)); // REMOVE when implementing matching
                         unmatchedSequence.Add(new AlignmentPoint(null, currentDialog));
                         ps3Index++;
                     }
                     else if(lineType == '-') //only exist in mangagamer
                     {
-                        //mangaGamerDialogueList[mgIndex].Associate(null);
                         MangaGamerDialogue currentDialog = mangaGamerDialogueList[mgIndex];
-                        //alignmentPoints.Add(new AlignmentPoint(currentDialog , null)); // REMOVE when implementing matching
                         unmatchedSequence.Add(new AlignmentPoint(currentDialog, null));
                         mgIndex++;
                     }

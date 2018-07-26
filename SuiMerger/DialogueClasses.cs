@@ -32,7 +32,6 @@ namespace SuiMerger
         public int dlgtype;
         public int debug_length;
         private List<MangaGamerDialogue> otherMangaGamerDialogues = new List<MangaGamerDialogue>();
-        //public List<PS3DialogueFragment> children = new List<PS3DialogueFragment>();
 
         public PS3DialogueInstruction(int num, int dlgtype, string data, List<string> previousXML, bool autoTranslate = true)
         {
@@ -83,8 +82,6 @@ namespace SuiMerger
             {
                 this.previousLinesOrInstructions = parent.previousLinesOrInstructions;
             }
-
-            //parent.children.Add(this);
         }
 
         public override string ToString()

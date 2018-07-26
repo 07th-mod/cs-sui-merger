@@ -235,6 +235,14 @@ namespace SuiMerger
             //Diff the dialogue
             List<PS3DialogueFragment> fragments = Differ.DoDiff(diff_temp_folder, allMangaGamerDialogue, pS3DialogueInstructions, out List<AlignmentPoint> alignmentPoints);
 
+            //TODO: verify the alignment points aren't missing any values
+
+            //check all manga gamer ids present
+
+            //check all ps3 ids present
+            
+            //check all fragments present?
+
             //DEBUG: generate the side-by-side diff
             PrintSideBySideDiff(alignmentPoints, debug_side_by_side_diff_path_MG, debug_side_by_side_diff_path_PS3);
 
