@@ -42,7 +42,7 @@ namespace SuiMerger
                                     int num = Convert.ToInt32(reader.GetAttribute("num"));
                                     int dlgtype = Convert.ToInt32(reader.GetAttribute("dlgtype"));
                                     string data = reader.GetAttribute("data");
-                                    dialogueInstructions.Add(new PS3DialogueInstruction(num, dlgtype, data, previousXML));
+                                    dialogueInstructions.Add(new PS3DialogueInstruction(num, dlgtype, data, previousXML, reader.ReadOuterXml()));
                                     previousXML.Clear();
                                 }
                                 else

@@ -158,7 +158,12 @@ namespace SuiMerger
                     {
                         PS3DialogueFragment ps3 = alignmentPoint.ps3DialogFragment;
                         currentPS3ToSave.AddRange(ps3.previousLinesOrInstructions);
-                        currentPS3ToSave.Add($">>>> [{ps3.ID}.{ps3.fragmentID} -> {(ps3.otherDialogue == null ? "NULL" : ps3.otherDialogue.ID.ToString())}]: {ps3.data}");
+                        if(ps3.fragmentID == 0)
+                        {
+                            currentPS3ToSave.Add(ps3.parent.translatedRawXML);
+                        }
+                        //add a comment detailing the fragment information
+                        currentPS3ToSave.Add($"<!-- [{ps3.ID}.{ps3.fragmentID} > {(ps3.otherDialogue == null ? "NULL" : ps3.otherDialogue.ID.ToString())}]: {ps3.data} -->");
                     }
 
                     if (alignmentPoint.mangaGamerDialogue != null)
@@ -186,9 +191,9 @@ namespace SuiMerger
         {
             StringUtils.WriteStringListRegion(fsOut, currentMangaGamerToSave, true, 0, currentMangaGamerToSave.Count - 1);
 
-            StringUtils.WriteString(fsOut, "-------------------------------------- START PS3 ----------------------------------------", true);
+            StringUtils.WriteString(fsOut, "<PS3_SECTION>  <!---------------------- START ------------------------->", true);
             StringUtils.WriteStringList(fsOut, currentPS3ToSave, true);
-            StringUtils.WriteString(fsOut, "--------------------------------------  END PS3 -----------------------------------------", true);
+            StringUtils.WriteString(fsOut, "</PS3_SECTION> <!----------------------- END -------------------------->", true);
 
             StringUtils.WriteStringListRegion(fsOut, currentMangaGamerToSave, true, currentMangaGamerToSave.Count - 1, currentMangaGamerToSave.Count);
         }
