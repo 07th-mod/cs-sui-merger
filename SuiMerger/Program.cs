@@ -69,12 +69,12 @@ namespace SuiMerger
 
             if (listA.Count < maxLen) //list A is smaller
             {
-                swA.WriteLine(padString);
+                swA.Write(padString);
             }
 
             if (listB.Count < maxLen)
             {
-                swB.WriteLine(padString);
+                swB.Write(padString);
             }
 
             StringUtils.WriteStringList(swA, listA);
