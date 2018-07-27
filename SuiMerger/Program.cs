@@ -310,7 +310,7 @@ namespace SuiMerger
                 ProcessSingleFile(pS3DialogueInstructionsPreFilter, config, inputInfo);
             }
 
-            UseInformation.InsertMGLinesUsingPS3XML(@"output\tsumi_025_3_merged.txt");
+            UseInformation.InsertMGLinesUsingPS3XML(@"output\tsumi_025_3_merged.txt", @"output\tsumi_025_3_bgm.txt");
 
             Console.WriteLine("\n\nProgram Finished!");
             Console.ReadLine();

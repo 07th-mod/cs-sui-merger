@@ -13,6 +13,7 @@ namespace SuiMerger
         static Regex ps3Start = new Regex(@"<?xml", RegexOptions.IgnoreCase);
         static Regex ps3End = new Regex(@"</PS3_SECTION", RegexOptions.IgnoreCase);
 
+        bool lastLineWasXML = false;
         bool insidePS3XML = false;
         StringBuilder sb = new StringBuilder();
 
@@ -40,11 +41,22 @@ namespace SuiMerger
                     sb.Append(line);
 
                     insidePS3XML = true;
+                    lastLineWasXML = true;
+                }
+                else //MG type line
+                {
+                    lastLineWasXML = false;
                 }
             }
 
             return null;
         }
+
+        public bool LastLineWasXML()
+        {
+            return lastLineWasXML;
+        }
+
     }
 
     class UseInformation
@@ -53,23 +65,38 @@ namespace SuiMerger
         static Regex playBGMRegex = new Regex(@"PlayBGM\(", RegexOptions.IgnoreCase);
         static Regex fadeOutBGMRegex = new Regex(@"FadeOutBGM\(", RegexOptions.IgnoreCase);
 
-        public static void InsertMGLinesUsingPS3XML(string mergedMGScriptPath)
+        public static void InsertMGLinesUsingPS3XML(string mergedMGScriptPath, string outputPath)
         {
+            using (FileStream outputFile = FileUtils.CreateDirectoriesAndOpen(outputPath, FileMode.Create))
             using (StreamReader mgScript = new StreamReader(mergedMGScriptPath, Encoding.UTF8))
             {
                 PS3XMLChunkFinder chunkFinder = new PS3XMLChunkFinder();
-                string line;
-                while ((line = mgScript.ReadLine()) != null)
+                string mgScriptLine;
+                while ((mgScriptLine = mgScript.ReadLine()) != null)
                 {
                     //TODO: handle commented lines here
-                    string ps3Chunk = chunkFinder.Update(line);
-                    if(ps3Chunk != null)
+
+                    //Handle XML data if there is any
+                    string ps3Chunk = chunkFinder.Update(mgScriptLine);
+                    if (ps3Chunk != null)
                     {
-                        PS3InstructionReader instructionReader = new PS3InstructionReader(new StringReader(ps3Chunk));
-                        while (instructionReader.AdvanceToNextInstruction())
+                        PS3InstructionReader ps3Reader = new PS3InstructionReader(new StringReader(ps3Chunk));
+                        while (ps3Reader.AdvanceToNextInstruction())
                         {
-                            Console.WriteLine("Got data:" + instructionReader.reader.ReadOuterXml());
+                            if (ps3Reader.reader.GetAttribute("type") == "BGM_PLAY")
+                            {
+                                string bgmFileName = ps3Reader.reader.GetAttribute("bgm_file");
+                                StringUtils.WriteString(outputFile, bgmFileName + "\n", false);
+                            }
+
+                            Console.WriteLine("Got data:" + ps3Reader.reader.ReadOuterXml());
                         }
+                    }
+
+                    //Handle original mg lines here
+                    if(!chunkFinder.LastLineWasXML())
+                    {
+                        StringUtils.WriteString(outputFile, mgScriptLine + "\n", false);
                     }
                 }
             }
