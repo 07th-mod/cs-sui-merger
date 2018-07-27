@@ -80,16 +80,24 @@ namespace SuiMerger
                     string ps3Chunk = chunkFinder.Update(mgScriptLine);
                     if (ps3Chunk != null)
                     {
+                        List<string> outputInstructions = new List<string>();
+
                         PS3InstructionReader ps3Reader = new PS3InstructionReader(new StringReader(ps3Chunk));
                         while (ps3Reader.AdvanceToNextInstruction())
                         {
                             if (ps3Reader.reader.GetAttribute("type") == "BGM_PLAY")
                             {
                                 string bgmFileName = ps3Reader.reader.GetAttribute("bgm_file");
-                                outputFile.WriteLine(bgmFileName);
+                                outputInstructions.Add($"PlayBGM( 0, \"{bgmFileName}\", 128, 0 );");
                             }
 
                             Console.WriteLine("Got data:" + ps3Reader.reader.ReadOuterXml());
+                        }
+
+                        //When writing out instructions, need to add a \t otherwise game won't recognize it
+                        foreach(string s in outputInstructions)
+                        {
+                            outputFile.WriteLine($"\t{s}");
                         }
                     }
 

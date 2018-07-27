@@ -12,6 +12,7 @@ using System.Xml;
 //TOOD: Within each block of non-matched lines, do a 'best fit' of all possible combinations (or some other way to match up the lines)
 //      Need to take into account that more than one line may map to each line (usually more than one MangaGamer line maps to a PS3 line)...
 //      Could split ps3 lines by voices/� marker, but a generic method could turn out better.
+//TODO: The last chunk of ps3 instructions after the last dialogue in the ps3 file is never parsed
 
 namespace SuiMerger
 {
@@ -144,7 +145,7 @@ namespace SuiMerger
             }
         }
 
-        static void SaveMergedMGScript(List<AlignmentPoint> alignmentPoints, string outputPath)
+        static void SaveMergedMGScript(List<AlignmentPoint> alignmentPoints, string outputPath, List<string> mgLeftovers)
         {
             using (StreamWriter swOut = FileUtils.CreateDirectoriesAndOpen(outputPath, FileMode.Create))
             {
@@ -184,8 +185,9 @@ namespace SuiMerger
 
                 //write out any leftover ps3 lines
                 WriteAssociatedPS3StringChunksFormatted(swOut, currentMangaGamerToSave, currentPS3ToSave);
-                //write out any leftover manga gamer lines
 
+                //write out any leftover manga gamer lines
+                StringUtils.WriteStringList(swOut, mgLeftovers);
             }
         }
 
@@ -254,7 +256,7 @@ namespace SuiMerger
             List<PS3DialogueInstruction> pS3DialogueInstructions = GetFilteredPS3Instructions(pS3DialogueInstructionsPreFilter, mgInfo.ps3_regions[0][0], mgInfo.ps3_regions[0][1]);
 
             //load all the mangagamer lines form the mangagamer file
-            List<MangaGamerDialogue> allMangaGamerDialogue = MangaGamerScriptReader.GetDialogueLinesFromMangaGamerScript(mgInfo.path);
+            List<MangaGamerDialogue> allMangaGamerDialogue = MangaGamerScriptReader.GetDialogueLinesFromMangaGamerScript(mgInfo.path, out List<string> mg_leftovers);
 
             //Diff the dialogue
             List<AlignmentPoint> alignmentPoints = Differ.DoDiff(config.temp_folder, allMangaGamerDialogue, pS3DialogueInstructions, out List<PS3DialogueFragment> fragments, debugFilenamePrefix: pathNoExt);
@@ -266,7 +268,7 @@ namespace SuiMerger
             PrintSideBySideDiff(alignmentPoints, debug_side_by_side_diff_path_MG, debug_side_by_side_diff_path_PS3);
 
             //Insert PS3 instructions
-            SaveMergedMGScript(alignmentPoints, Path.Combine(config.output_folder, pathNoExt + "_merged.txt"));
+            SaveMergedMGScript(alignmentPoints, Path.Combine(config.output_folder, pathNoExt + "_merged.txt"), mg_leftovers);
         }
 
         static int Main(string[] args)

@@ -10,7 +10,7 @@ namespace SuiMerger
     class MangaGamerScriptReader
     {
         //Searches for japanese dialogue in the 'OutputLine' functions in the MangaGamer scripts
-        public static List<MangaGamerDialogue> GetDialogueLinesFromMangaGamerScript(string filePath)
+        public static List<MangaGamerDialogue> GetDialogueLinesFromMangaGamerScript(string filePath, out List<string> mgLeftovers)
         {
             IEnumerable<string> allLines = File.ReadLines(filePath);
             List<MangaGamerDialogue> dialogues = new List<MangaGamerDialogue>();
@@ -31,6 +31,8 @@ namespace SuiMerger
 
                 lineNumber += 1;
             }
+
+            mgLeftovers = previousLines;
 
             return dialogues;
         }
