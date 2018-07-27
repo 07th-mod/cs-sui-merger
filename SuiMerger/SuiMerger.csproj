@@ -62,6 +62,7 @@
     <Compile Include="PS3DialogueTools.cs" />
     <Compile Include="PS3XMLReader.cs" />
     <Compile Include="StringUtils.cs" />
+    <Compile Include="UseInformation.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
