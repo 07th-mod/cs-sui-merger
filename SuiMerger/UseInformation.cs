@@ -14,39 +14,22 @@ namespace SuiMerger
         static Regex ps3End = new Regex(@"</PS3_SECTION", RegexOptions.IgnoreCase);
 
         bool insidePS3XML = false;
-        MemoryStream ps3XML;
-        StreamWriter ps3XMLWriter;
+        StringBuilder sb = new StringBuilder();
 
-        public PS3XMLChunkFinder()
-        {
-            ps3XML = new MemoryStream();
-            ps3XMLWriter = new StreamWriter(ps3XML, Encoding.UTF8);
-        }
-
-        public MemoryStream Update(string line)
+        public string Update(string line)
         {
             if (insidePS3XML)
             {
-                ps3XMLWriter.WriteLine(line);
+                sb.Append(line);
 
                 if (ps3End.IsMatch(line))
                 {
                     Console.WriteLine($"saw ps3  end: {line}");
                     insidePS3XML = false;
-
-                    //MUST flush before use, otherwise some lines might not be seen?
-                    ps3XMLWriter.Flush();
-
-                    MemoryStream ms = new MemoryStream();
-                    ps3XML.Seek(0, SeekOrigin.Begin);
-                    ps3XML.CopyTo(ms);
-                    ps3XML.Flush();
-                    ms.Seek(0, SeekOrigin.Begin);
-
-                    //Clear the stream after finished
-                    ps3XML.SetLength(0);
                     
-                    return ms;
+                    string retString = sb.ToString();
+                    sb.Clear();
+                    return retString;
                 }
             }
             else
@@ -54,7 +37,7 @@ namespace SuiMerger
                 if (ps3Start.IsMatch(line))
                 {
                     Console.WriteLine($"saw ps3 start: {line}");
-                    ps3XMLWriter.WriteLine(line);
+                    sb.Append(line);
 
                     insidePS3XML = true;
                 }
@@ -79,15 +62,14 @@ namespace SuiMerger
                 while ((line = mgScript.ReadLine()) != null)
                 {
                     //TODO: handle commented lines here
-                    MemoryStream ms = chunkFinder.Update(line);
-                    if(ms != null)
+                    string ps3Chunk = chunkFinder.Update(line);
+                    if(ps3Chunk != null)
                     {
-                        PS3InstructionReader instructionReader = new PS3InstructionReader(ms);
+                        PS3InstructionReader instructionReader = new PS3InstructionReader(new StringReader(ps3Chunk));
                         while (instructionReader.AdvanceToNextInstruction())
                         {
                             Console.WriteLine("Got data:" + instructionReader.reader.ReadOuterXml());
                         }
-
                     }
                 }
             }

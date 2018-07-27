@@ -12,7 +12,13 @@ namespace SuiMerger
     {
         public XmlReader reader;
 
+        //Should use generics here...
         public PS3InstructionReader(System.IO.Stream stream)
+        {
+            reader = XmlReader.Create(stream, new XmlReaderSettings());
+        }
+
+        public PS3InstructionReader(TextReader stream)
         {
             reader = XmlReader.Create(stream, new XmlReaderSettings());
         }
