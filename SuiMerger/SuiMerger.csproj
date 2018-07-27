@@ -49,6 +49,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Config.cs" />
     <Compile Include="Differ.cs" />
     <Compile Include="FileConcatenator.cs" />
     <Compile Include="FileTranslator.cs" />

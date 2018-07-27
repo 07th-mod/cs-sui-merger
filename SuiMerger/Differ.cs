@@ -71,7 +71,7 @@ namespace SuiMerger
         static public void WriteListOfDialogueToFile(IEnumerable<DialogueBase> dialogues, string outputFileName, bool isPS3)
         {
             //write the diff-prepared manga gamer dialogue to a file
-            using (FileStream fs = FileUtils.CreateDirectoriesAndOpen(outputFileName, FileMode.Create))
+            using (StreamWriter sw = FileUtils.CreateDirectoriesAndOpen(outputFileName, FileMode.Create))
             {
                 foreach (DialogueBase line in dialogues)
                 {
@@ -79,8 +79,7 @@ namespace SuiMerger
 
                     preprocessedLine = PrepareStringForDiff(preprocessedLine);
 
-                    byte[] stringAsBytes = new UTF8Encoding(true).GetBytes($"{preprocessedLine}\n");
-                    fs.Write(stringAsBytes, 0, stringAsBytes.Length);
+                    sw.WriteLine(preprocessedLine);
                 }
             }
         }
@@ -240,10 +239,9 @@ namespace SuiMerger
             string diffResult = RunDiffTool(mangaGamerDiffInputPath, PS3DiffInputPath);
 
             //save the diff to file for debugging
-            using (FileStream fs = new FileStream(diffOutputPath, FileMode.Create))
+            using (StreamWriter sw = FileUtils.CreateDirectoriesAndOpen(diffOutputPath, FileMode.Create))
             {
-                byte[] stringAsBytes = new UTF8Encoding(true).GetBytes(diffResult);
-                fs.Write(stringAsBytes, 0, stringAsBytes.Length);
+                sw.Write(diffResult);
             }
 
             List<AlignmentPoint> alignmentPoints = new List<AlignmentPoint>();

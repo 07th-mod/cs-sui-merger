@@ -9,10 +9,14 @@ namespace SuiMerger
 {
     class FileUtils
     {
-        public static FileStream CreateDirectoriesAndOpen(string filePath, FileMode fm)
+        public static StreamWriter CreateDirectoriesAndOpen(string filePath, FileMode fm)
         {
             Directory.CreateDirectory(Path.GetDirectoryName(filePath));
-            return new FileStream(filePath, fm);
+            StreamWriter sw = new StreamWriter(new FileStream(filePath, fm))
+            {
+                NewLine = Config.newline.ToString()
+            };
+            return sw;
         }
     }
 }

@@ -60,24 +60,24 @@ namespace SuiMerger
 
     class Program
     {
-        static void WriteSideBySideTopPad(FileStream fsA, FileStream fsB, List<string> listA, List<string> listB)
+        static void WriteSideBySideTopPad(StreamWriter swA, StreamWriter swB, List<string> listA, List<string> listB)
         {
             int maxLen = Math.Max(listA.Count, listB.Count);
             int minLen = Math.Min(listA.Count, listB.Count);
-            string padString = new String('\n', maxLen - minLen);
+            string padString = new String(Config.newline, maxLen - minLen);
 
             if (listA.Count < maxLen) //list A is smaller
             {
-                StringUtils.WriteString(fsA, padString);
+                swA.WriteLine(padString);
             }
 
             if (listB.Count < maxLen)
             {
-                StringUtils.WriteString(fsB, padString);
+                swB.WriteLine(padString);
             }
 
-            StringUtils.WriteStringList(fsA, listA, forceNewline:true);
-            StringUtils.WriteStringList(fsB, listB, forceNewline:true);
+            StringUtils.WriteStringList(swA, listA);
+            StringUtils.WriteStringList(swB, listB);
         }
 
         //Returns a new list, filtered by the specified ranges
@@ -103,9 +103,9 @@ namespace SuiMerger
 
         static void PrintSideBySideDiff(List<AlignmentPoint> alignmentPoints, string debug_path_MG, string debug_path_PS3)
         {
-            using (FileStream fsMG = FileUtils.CreateDirectoriesAndOpen(debug_path_MG, FileMode.Create))
+            using (StreamWriter swMG = FileUtils.CreateDirectoriesAndOpen(debug_path_MG, FileMode.Create))
             {
-                using (FileStream fsPS3 = FileUtils.CreateDirectoriesAndOpen(debug_path_PS3, FileMode.Create))
+                using (StreamWriter swPS3 = FileUtils.CreateDirectoriesAndOpen(debug_path_PS3, FileMode.Create))
                 {
                     //iterate through each dialogue in PS3 list
                     List<string> currentPS3ToSave = new List<string>();
@@ -131,13 +131,13 @@ namespace SuiMerger
                         if (alignmentPoint.ps3DialogFragment != null && alignmentPoint.mangaGamerDialogue != null)
                         {
                             //Finally, top-pad the file with enough spaces so they line up (printing could be its own function)
-                            WriteSideBySideTopPad(fsMG, fsPS3, currentMangaGamerToSave, currentPS3ToSave);
+                            WriteSideBySideTopPad(swMG, swPS3, currentMangaGamerToSave, currentPS3ToSave);
                             currentPS3ToSave.Clear();
                             currentMangaGamerToSave.Clear();
                         }                    
                     }
                     
-                    WriteSideBySideTopPad(fsMG, fsPS3, currentMangaGamerToSave, currentPS3ToSave);
+                    WriteSideBySideTopPad(swMG, swPS3, currentMangaGamerToSave, currentPS3ToSave);
                     currentPS3ToSave.Clear();
                     currentMangaGamerToSave.Clear();
                 }
@@ -146,7 +146,7 @@ namespace SuiMerger
 
         static void SaveMergedMGScript(List<AlignmentPoint> alignmentPoints, string outputPath)
         {
-            using (FileStream fsOut = FileUtils.CreateDirectoriesAndOpen(outputPath, FileMode.Create))
+            using (StreamWriter swOut = FileUtils.CreateDirectoriesAndOpen(outputPath, FileMode.Create))
             {
                 //iterate through each dialogue in PS3 list
                 List<string> currentPS3ToSave = new List<string>();
@@ -175,28 +175,30 @@ namespace SuiMerger
 
                     if (alignmentPoint.ps3DialogFragment != null && alignmentPoint.mangaGamerDialogue != null)
                     {
-                        WriteAssociatedPS3StringChunksFormatted(fsOut, currentMangaGamerToSave, currentPS3ToSave);
+                        WriteAssociatedPS3StringChunksFormatted(swOut, currentMangaGamerToSave, currentPS3ToSave);
 
                         currentPS3ToSave.Clear();
                         currentMangaGamerToSave.Clear();
                     }
                 }
 
-                //write out any leftover lines
-                WriteAssociatedPS3StringChunksFormatted(fsOut, currentMangaGamerToSave, currentPS3ToSave);
+                //write out any leftover ps3 lines
+                WriteAssociatedPS3StringChunksFormatted(swOut, currentMangaGamerToSave, currentPS3ToSave);
+                //write out any leftover manga gamer lines
+
             }
         }
 
-        static void WriteAssociatedPS3StringChunksFormatted(FileStream fsOut, List<string> currentMangaGamerToSave, List<string> currentPS3ToSave)
+        static void WriteAssociatedPS3StringChunksFormatted(StreamWriter swOut, List<string> currentMangaGamerToSave, List<string> currentPS3ToSave)
         {
-            StringUtils.WriteStringListRegion(fsOut, currentMangaGamerToSave, true, 0, currentMangaGamerToSave.Count - 1);
+            StringUtils.WriteStringListRegion(swOut, currentMangaGamerToSave, 0, currentMangaGamerToSave.Count - 1);
 
-            StringUtils.WriteString(fsOut, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>", true);
-            StringUtils.WriteString(fsOut, "<PS3_SECTION>  <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~START~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->", true);
-            StringUtils.WriteStringList(fsOut, currentPS3ToSave, true);
-            StringUtils.WriteString(fsOut, "</PS3_SECTION> <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~END~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->", true);
+            swOut.WriteLine("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
+            swOut.WriteLine("<PS3_SECTION>  <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~START~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->");
+            StringUtils.WriteStringList(swOut, currentPS3ToSave);
+            swOut.WriteLine("</PS3_SECTION> <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~END~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->");
 
-            StringUtils.WriteStringListRegion(fsOut, currentMangaGamerToSave, true, currentMangaGamerToSave.Count - 1, currentMangaGamerToSave.Count);
+            StringUtils.WriteStringListRegion(swOut, currentMangaGamerToSave, currentMangaGamerToSave.Count - 1, currentMangaGamerToSave.Count);
         }
 
         static void SanityCheckAlignmentPoints(List<AlignmentPoint> alignmentPoints, List<MangaGamerDialogue> allMangaGamerDialogue, List<PS3DialogueFragment> fragments)

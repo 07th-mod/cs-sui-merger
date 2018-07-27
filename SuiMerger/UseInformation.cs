@@ -67,7 +67,7 @@ namespace SuiMerger
 
         public static void InsertMGLinesUsingPS3XML(string mergedMGScriptPath, string outputPath)
         {
-            using (FileStream outputFile = FileUtils.CreateDirectoriesAndOpen(outputPath, FileMode.Create))
+            using (StreamWriter outputFile = FileUtils.CreateDirectoriesAndOpen(outputPath, FileMode.Create))
             using (StreamReader mgScript = new StreamReader(mergedMGScriptPath, Encoding.UTF8))
             {
                 PS3XMLChunkFinder chunkFinder = new PS3XMLChunkFinder();
@@ -86,7 +86,7 @@ namespace SuiMerger
                             if (ps3Reader.reader.GetAttribute("type") == "BGM_PLAY")
                             {
                                 string bgmFileName = ps3Reader.reader.GetAttribute("bgm_file");
-                                StringUtils.WriteString(outputFile, bgmFileName + "\n", false);
+                                outputFile.WriteLine(bgmFileName);
                             }
 
                             Console.WriteLine("Got data:" + ps3Reader.reader.ReadOuterXml());
@@ -96,7 +96,7 @@ namespace SuiMerger
                     //Handle original mg lines here
                     if(!chunkFinder.LastLineWasXML())
                     {
-                        StringUtils.WriteString(outputFile, mgScriptLine + "\n", false);
+                        outputFile.WriteLine(mgScriptLine);
                     }
                 }
             }
