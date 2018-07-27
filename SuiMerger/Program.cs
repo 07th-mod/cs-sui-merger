@@ -162,7 +162,7 @@ namespace SuiMerger
                         {
                             currentPS3ToSave.Add(ps3.parent.translatedRawXML);
                         }
-                        //add a comment detailing the fragment information
+                        //add a comment detailing the fragment information. NOTE: double hypen (--) is not allowed in XML comments
                         currentPS3ToSave.Add($"<!-- [{ps3.ID}.{ps3.fragmentID} > {(ps3.otherDialogue == null ? "NULL" : ps3.otherDialogue.ID.ToString())}]: {ps3.data} -->");
                     }
 
@@ -191,9 +191,10 @@ namespace SuiMerger
         {
             StringUtils.WriteStringListRegion(fsOut, currentMangaGamerToSave, true, 0, currentMangaGamerToSave.Count - 1);
 
-            StringUtils.WriteString(fsOut, "<PS3_SECTION>  <!---------------------- START ------------------------->", true);
+            StringUtils.WriteString(fsOut, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>", true);
+            StringUtils.WriteString(fsOut, "<PS3_SECTION>  <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~START~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->", true);
             StringUtils.WriteStringList(fsOut, currentPS3ToSave, true);
-            StringUtils.WriteString(fsOut, "</PS3_SECTION> <!----------------------- END -------------------------->", true);
+            StringUtils.WriteString(fsOut, "</PS3_SECTION> <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~END~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->", true);
 
             StringUtils.WriteStringListRegion(fsOut, currentMangaGamerToSave, true, currentMangaGamerToSave.Count - 1, currentMangaGamerToSave.Count);
         }
@@ -300,7 +301,7 @@ namespace SuiMerger
                 Console.WriteLine($"Can't find ps3 input file/folder {Path.GetFullPath(config.ps3_xml_path)}");
                 PauseThenErrorExit();
             }
-            
+
             //begin processing
             List<PS3DialogueInstruction> pS3DialogueInstructionsPreFilter = PS3XMLReader.GetPS3DialoguesFromXML(untranslatedXMLFilePath);
 
@@ -308,6 +309,8 @@ namespace SuiMerger
             {
                 ProcessSingleFile(pS3DialogueInstructionsPreFilter, config, inputInfo);
             }
+
+            UseInformation.InsertMGLinesUsingPS3XML(@"output\tsumi_025_3_merged.txt");
 
             Console.WriteLine("\n\nProgram Finished!");
             Console.ReadLine();

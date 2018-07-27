@@ -21,6 +21,7 @@ namespace SuiMerger
             return c_codepoint <= 0xFF;
         }
 
+        //TODO: these should jsut use StreamReader, not FileStream...
         public static void WriteString(FileStream fs, string s, bool forceNewline=false)
         {
             if(forceNewline)

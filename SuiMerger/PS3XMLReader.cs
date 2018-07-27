@@ -47,6 +47,10 @@ namespace SuiMerger
                         Console.WriteLine("Skipping XML Declaration");
                         break;
 
+                    case XmlNodeType.Comment:
+                        Console.WriteLine($"Skipping XML comment {reader.Value}");
+                        break;
+
                     default:
                         if (reader.Value.Trim() != "")
                         {
