@@ -8,6 +8,43 @@ using System.Text.RegularExpressions;
 
 namespace SuiMerger
 {
+    abstract class MangaGamerInstruction
+    {
+        public abstract override string ToString();
+    }
+
+    class MGPlayBGM : MangaGamerInstruction
+    {
+        readonly string bgmFileName;
+
+        public MGPlayBGM(string bgmFileName)
+        {
+            this.bgmFileName = bgmFileName;
+        }
+
+        public override string ToString()
+        {
+            return $"PlayBGM( 0, \"{bgmFileName}\", 128, 0 );";
+        }
+    }
+
+    class MGFadeOutBGM : MangaGamerInstruction
+    {
+        readonly int channel;
+        readonly int fadeTime;
+
+        public MGFadeOutBGM(int channel, int ps3Duration)
+        {
+            this.channel = channel;
+            this.fadeTime = (int)Math.Round(ps3Duration / 60.0 * 1000.0);
+        }
+
+        public override string ToString()
+        {
+            return $"FadeOutBGM( {channel}, {fadeTime}, FALSE );";
+        }
+    }
+
     class PS3XMLChunkFinder
     {
         static Regex ps3Start = new Regex(@"<?xml", RegexOptions.IgnoreCase);
@@ -68,7 +105,7 @@ namespace SuiMerger
                     string ps3Chunk = chunkFinder.Update(mgScriptLine);
                     if (ps3Chunk != null)
                     {
-                        List<string> instructionsToInsert = new List<string>();
+                        List<MangaGamerInstruction> instructionsToInsert = new List<MangaGamerInstruction>();
                         //foreach(string inst in outputInstructions)
                         /*{
                             Console.WriteLine(ps3Chunk);
@@ -81,18 +118,12 @@ namespace SuiMerger
                             {
                                 case "BGM_PLAY":
                                     string bgmFileName = ps3Reader.reader.GetAttribute("bgm_file");
-                                    string mgPlayBGMString = $"PlayBGM( 0, \"{bgmFileName}\", 128, 0 );";
-                                    instructionsToInsert.Add(mgPlayBGMString);
-                                    Console.WriteLine($"Found BGM play string, will add: {mgPlayBGMString}");
+                                    instructionsToInsert.Add(new MGPlayBGM(bgmFileName));
                                     break;
 
                                 case "BGM_FADE":
                                     int duration = Convert.ToInt32(ps3Reader.reader.GetAttribute("duration"));
-                                    int channel = 0;
-                                    int fadeTime = (int)Math.Round(duration / 60.0 * 1000.0);
-                                    string mgFadeOutBGM = $"FadeOutBGM( {channel}, {fadeTime}, FALSE );";
-                                    instructionsToInsert.Add(mgFadeOutBGM);
-                                    Console.WriteLine($"Found BGM fade string, will add: {mgFadeOutBGM}");
+                                    instructionsToInsert.Add(new MGFadeOutBGM(0, duration));
                                     break;
                             }
 
@@ -100,9 +131,20 @@ namespace SuiMerger
                         }
 
                         //When writing out instructions, need to add a \t otherwise game won't recognize it
-                        foreach(string s in instructionsToInsert)
+                        foreach(MangaGamerInstruction mgInstruction in instructionsToInsert)
                         {
-                            outputFile.WriteLine($"\t{s}");
+                            switch(mgInstruction)
+                            {
+                                case MGPlayBGM playBGM:
+                                    Console.WriteLine($"Found BGM play string, will add: {playBGM.ToString()}");
+                                    break;
+
+                                case MGFadeOutBGM fadeBGM:
+                                    Console.WriteLine($"Found BGM fade string, will add: {fadeBGM}");
+                                    break;
+                            }
+
+                            outputFile.WriteLine($"\t{mgInstruction.ToString()}");
                         }
                     }
 
