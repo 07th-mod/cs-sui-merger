@@ -124,6 +124,11 @@ namespace SuiMerger
         {
             return $"[[{(mangaGamerDialogue == null ? "NULL" : mangaGamerDialogue.ToString())}]] <-> [[{(ps3DialogFragment == null ? "NULL" : ps3DialogFragment.ToString())}]]";
         }
+
+        public bool IsMatch()
+        {
+            return ps3DialogFragment != null && mangaGamerDialogue != null;
+        }
     }
         
 

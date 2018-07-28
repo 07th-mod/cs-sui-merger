@@ -42,5 +42,48 @@ namespace SuiMerger
             }
         }
 
+        //make this generic!
+        public static string PrettyPrintListToString(List<int> list)
+        {
+            StringBuilder sb = new StringBuilder();
+
+            sb.Append("[");
+            for(int i = 0; i < list.Count; i++)
+            {
+                if (i != list.Count - 1)
+                {
+                    sb.Append($"{list[i]}, ");
+                }
+                else
+                {
+                    sb.Append(list[i].ToString());
+                }
+            }
+            sb.Append("]");
+
+            return sb.ToString();
+        }
+
+        public static string PrettyPrintListOfListToString(List<List<int>> list)
+        {
+            StringBuilder sb = new StringBuilder();
+
+            sb.Append("[");
+            for (int i = 0; i < list.Count; i++)
+            {
+                if (i != list.Count - 1)
+                {
+                    sb.Append($"{PrettyPrintListToString(list[i])}, ");
+                }
+                else
+                {
+                    sb.Append(PrettyPrintListToString(list[i]));
+                }
+            }
+            sb.Append("]");
+
+            return sb.ToString();
+        }
+
     }
 }

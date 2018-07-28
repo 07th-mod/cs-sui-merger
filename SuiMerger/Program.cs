@@ -82,23 +82,28 @@ namespace SuiMerger
         }
 
         //Returns a new list, filtered by the specified ranges
-        static List<PS3DialogueInstruction> GetFilteredPS3Instructions(List<PS3DialogueInstruction> inputList, int regionStart, int regionEnd)
+        static List<PS3DialogueInstruction> GetFilteredPS3Instructions(List<PS3DialogueInstruction> inputList, List<List<int>> regions)
         {
-            List<PS3DialogueInstruction> filteredList = new List<PS3DialogueInstruction>();
-            if (regionStart == -1)
+            //assume that the whole list is to be scanned, if not specified.
+            if(regions.Count == 0)
             {
-                filteredList = inputList;
+                return new List<PS3DialogueInstruction>(inputList);
             }
-            else
+
+            List<PS3DialogueInstruction> filteredList = new List<PS3DialogueInstruction>();
+
+            //add regions in the order they appear passed in by the user
+            foreach (List<int> region in regions)
             {
                 foreach (PS3DialogueInstruction ps3Dialogue in inputList)
                 {
-                    if (ps3Dialogue.ID >= regionStart && ps3Dialogue.ID <= regionEnd)
+                    if (ps3Dialogue.ID >= region[0] && ps3Dialogue.ID <= region[1])
                     {
                         filteredList.Add(ps3Dialogue);
                     }
                 }
             }
+
             return filteredList;
         }
 
@@ -246,7 +251,7 @@ namespace SuiMerger
             Environment.Exit(-1);
         }
 
-        static void ProcessSingleFile(List<PS3DialogueInstruction> pS3DialogueInstructionsPreFilter, MergerConfiguration config, InputInfo mgInfo)
+        static void ProcessSingleFile(List<PS3DialogueInstruction> pS3DialogueInstructionsPreFilter, MergerConfiguration config, InputInfo mgInfo, List<InputInfo> guessedInputInfos)
         {
             string fullPath = Path.Combine(config.input_folder, mgInfo.filename);
             string pathNoExt = Path.GetFileNameWithoutExtension(fullPath);
@@ -254,7 +259,7 @@ namespace SuiMerger
             string debug_side_by_side_diff_path_MG  = Path.Combine(config.temp_folder, pathNoExt + "_debug_side_MG.txt");
             string debug_side_by_side_diff_path_PS3 = Path.Combine(config.temp_folder, pathNoExt + "_debug_side_PS3.txt");
 
-            List<PS3DialogueInstruction> pS3DialogueInstructions = GetFilteredPS3Instructions(pS3DialogueInstructionsPreFilter, mgInfo.ps3_regions[0][0], mgInfo.ps3_regions[0][1]);
+            List<PS3DialogueInstruction> pS3DialogueInstructions = GetFilteredPS3Instructions(pS3DialogueInstructionsPreFilter, mgInfo.ps3_regions);           
 
             //load all the mangagamer lines form the mangagamer file
             List<MangaGamerDialogue> allMangaGamerDialogue = MangaGamerScriptReader.GetDialogueLinesFromMangaGamerScript(fullPath, out List<string> mg_leftovers);
@@ -275,10 +280,78 @@ namespace SuiMerger
             //Use the inserted instructions
             UseInformation.InsertMGLinesUsingPS3XML(mergedOutputPath, Path.Combine(config.output_folder, pathNoExt + "_bgm.txt"));
 
+            //Printout guessed ps3 region if region not specified in config file
+            if(mgInfo.ps3_regions.Count == 0)
+            {
+                int firstMatch = -1;
+                int lastMatch = -1;
+
+                PS3DialogueInstruction ps3Parent = null;
+
+                Console.WriteLine("\n[  HINT  ]: Printing first 5 matching PS3 lines");
+                int numFound = 0;
+                foreach (AlignmentPoint ap in alignmentPoints)
+                {
+                    if(ap.IsMatch())
+                    {
+                        if(ap.ps3DialogFragment.parent != ps3Parent)
+                        {
+                            ps3Parent = ap.ps3DialogFragment.parent;
+                            //record the match so it can be saved to an output file
+                            if (firstMatch == -1)
+                            {
+                                firstMatch = ps3Parent.ID;
+                            }
+
+                            Console.WriteLine($"\tStart {numFound}: {ps3Parent.ID} - {ps3Parent.translatedRawXML}");
+                            numFound += 1;
+
+                            if (numFound > 5)
+                                break;
+                        }
+                    }
+                }
+
+                Console.WriteLine("\n[  HINT  ]: Printing last 5 matching PS3 lines");
+                numFound = 0;
+                for (int i = alignmentPoints.Count-1; i > 0; i--)
+                {
+                    AlignmentPoint ap = alignmentPoints[i];
+                    if (ap.IsMatch())
+                    {
+                        if (ap.ps3DialogFragment.parent != ps3Parent)
+                        {
+                            ps3Parent = ap.ps3DialogFragment.parent;
+                            //record the match so it can be saved to an output file
+                            if (lastMatch == -1)
+                            {
+                                lastMatch = ps3Parent.ID;
+                            }
+
+                            Console.WriteLine($"\tEnd {numFound}: {ps3Parent.ID} - {ps3Parent.translatedRawXML}");
+                            numFound += 1;
+
+                            if (numFound > 5)
+                                break;
+                        }
+                    }
+                }
+
+                guessedInputInfos.Add(new InputInfo
+                {
+                    filename = mgInfo.filename,
+                    ps3_regions = new List<List<int>>
+                    {
+                        new List<int> {firstMatch, lastMatch}
+                    },
+                });
+            }
         }
 
         static int Main(string[] args)
         {
+            Console.WriteLine("If japanese characters show as ???? please change your console font to MS Gothic or similar.");
+
             //MUST set this so that diff tool can output proper unicode (otherwise output is scrambled)
             //and so can see japanese characters (you might need to change your console font too to MS Gothic or similar)
             Console.OutputEncoding = System.Text.Encoding.UTF8;
@@ -315,9 +388,54 @@ namespace SuiMerger
             //begin processing
             List<PS3DialogueInstruction> pS3DialogueInstructionsPreFilter = PS3XMLReader.GetPS3DialoguesFromXML(untranslatedXMLFilePath);
 
-            foreach(InputInfo inputInfo in config.input)
+            //TODO: scan for files, generate dummy input infos for files which haven't got specified regions.
+            //ProcessSingleFile should then attempt to find the correct regions for those files and dump to toml file
+            //TODO: clean up console output
+            HashSet<string> filePathsToGetStartEnd = new HashSet<string>(); //note: this path includes the input folder name eg "input/test.txt"
+            foreach(string fileInInputFolder in Directory.EnumerateFiles(config.input_folder, "*.*", SearchOption.AllDirectories))
             {
-                ProcessSingleFile(pS3DialogueInstructionsPreFilter, config, inputInfo);
+                filePathsToGetStartEnd.Add(Path.GetFullPath(fileInInputFolder));
+            }
+
+            foreach (InputInfo inputInfo in config.input)
+            {
+                string tomlInputFilePathNormalized = Path.GetFullPath(Path.Combine(config.input_folder, inputInfo.filename));
+                
+                if (filePathsToGetStartEnd.Contains(tomlInputFilePathNormalized))
+                {
+                    Console.WriteLine($"\n[  TOML OK   ]: {tomlInputFilePathNormalized} found in config file with region {StringUtils.PrettyPrintListOfListToString(inputInfo.ps3_regions)}");
+                    filePathsToGetStartEnd.Remove(tomlInputFilePathNormalized);
+                    ProcessSingleFile(pS3DialogueInstructionsPreFilter, config, inputInfo, new List<InputInfo>());
+                }       
+            }
+
+            List<InputInfo> guessedInputInfos = new List<InputInfo>();
+            foreach(string filePathToGetStartEnd in filePathsToGetStartEnd)
+            {
+                Console.WriteLine($"\n[TOML MISSING]: Start/End of [{filePathToGetStartEnd}] not specified.");
+                Console.WriteLine($"Will try best to do matching, but suggest manually inputting start and end.");
+                string relativePath = FileUtils.GetRelativePath(filePathToGetStartEnd, Path.GetFullPath(config.input_folder));
+
+                // Since no ps3 region specified, should just search the whole PS3 xml   
+                InputInfo wholeFileInputInfo = new InputInfo
+                {
+                    filename = relativePath,
+                    ps3_regions = new List<List<int>>(),                 
+                };
+                ProcessSingleFile(pS3DialogueInstructionsPreFilter, config, wholeFileInputInfo, guessedInputInfos);
+            }
+
+            //Save to a file so it can be copied into toml file (if already correct)
+            using (StreamWriter sw = FileUtils.CreateDirectoriesAndOpen(config.guessed_matches, FileMode.Create))
+            {
+                foreach (InputInfo info in guessedInputInfos)
+                {
+                    sw.WriteLine("# Autogenerated Match");
+                    sw.WriteLine("[[input]]");
+                    sw.WriteLine($"filename = {info.filename}");
+                    sw.WriteLine($"ps3_regions = [[{info.ps3_regions[0][0]},{info.ps3_regions[0][1]}]]");
+                    sw.WriteLine();
+                }
             }
 
             Console.WriteLine("\n\nProgram Finished!");

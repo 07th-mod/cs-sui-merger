@@ -36,7 +36,7 @@ namespace SuiMerger
         {
             string command = "git";
             string arguments = $"diff --no-index --ignore-blank-lines -w -U1000000 \"{inputPathA}\" \"{inputPathB}\"";
-            Console.WriteLine($"Command: [{command}] Arguments: [{arguments}]");
+            DebugUtils.Print($"Command: [{command}] Arguments: [{arguments}]");
             ProcessStartInfo psi = new ProcessStartInfo
             {
                 Arguments = arguments,

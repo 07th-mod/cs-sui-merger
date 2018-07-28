@@ -28,6 +28,9 @@ ps3_merged_output_path = "merged_sui.xml"
 # to make it easier for you to find the actual start and end locations
 input_folder = "input"
 
+# if any inputs, this path will be used to put the guessed matches in .toml format
+guessed_matches = "guessed_matches.toml"
+
 [[input]]
 filename = "tsumi_025_3.txt"
 ps3_regions = [ [91816,92563] ]

@@ -21,6 +21,8 @@ namespace SuiMerger
         public string ps3_xml_path { get; set; }
         public string ps3_merged_output_path { get; set; }
 
+        public string guessed_matches { get; set; }
+
         //per each mg input config
         public List<InputInfo> input { get; set; }
     }
