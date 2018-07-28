@@ -248,7 +248,8 @@ namespace SuiMerger
 
         static void ProcessSingleFile(List<PS3DialogueInstruction> pS3DialogueInstructionsPreFilter, MergerConfiguration config, InputInfo mgInfo)
         {
-            string pathNoExt = Path.GetFileNameWithoutExtension(mgInfo.path);
+            string fullPath = Path.Combine(config.input_folder, mgInfo.filename);
+            string pathNoExt = Path.GetFileNameWithoutExtension(fullPath);
 
             string debug_side_by_side_diff_path_MG  = Path.Combine(config.temp_folder, pathNoExt + "_debug_side_MG.txt");
             string debug_side_by_side_diff_path_PS3 = Path.Combine(config.temp_folder, pathNoExt + "_debug_side_PS3.txt");
@@ -256,7 +257,7 @@ namespace SuiMerger
             List<PS3DialogueInstruction> pS3DialogueInstructions = GetFilteredPS3Instructions(pS3DialogueInstructionsPreFilter, mgInfo.ps3_regions[0][0], mgInfo.ps3_regions[0][1]);
 
             //load all the mangagamer lines form the mangagamer file
-            List<MangaGamerDialogue> allMangaGamerDialogue = MangaGamerScriptReader.GetDialogueLinesFromMangaGamerScript(mgInfo.path, out List<string> mg_leftovers);
+            List<MangaGamerDialogue> allMangaGamerDialogue = MangaGamerScriptReader.GetDialogueLinesFromMangaGamerScript(fullPath, out List<string> mg_leftovers);
 
             //Diff the dialogue
             List<AlignmentPoint> alignmentPoints = Differ.DoDiff(config.temp_folder, allMangaGamerDialogue, pS3DialogueInstructions, out List<PS3DialogueFragment> fragments, debugFilenamePrefix: pathNoExt);

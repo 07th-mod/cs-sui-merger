@@ -23,11 +23,16 @@ ps3_xml_path = "sui_xml_NOT_translated.xml"
 #where to saved the concatenated xml file, if merging a folder of xml files
 ps3_merged_output_path = "merged_sui.xml"
 
+# folder to scan for input scripts not mentioned in the below input section
+# the program will try to identify the start and end locations of these scripts 
+# to make it easier for you to find the actual start and end locations
+input_folder = "input"
+
 [[input]]
-path = "input/tsumi_025_3.txt"
+filename = "tsumi_025_3.txt"
 ps3_regions = [ [91816,92563] ]
 
 
 #[[input]]
-#path = "tsumi_026.txt"
+#filename = "tsumi_026.txt"
 #ps3_regions = [ [92565, 93391] ]

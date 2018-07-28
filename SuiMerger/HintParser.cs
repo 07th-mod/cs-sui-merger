@@ -1,6 +1,7 @@
 ﻿using Nett;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -14,6 +15,7 @@ namespace SuiMerger
 
         public string temp_folder { get; set; }
         public string output_folder { get; set; }
+        public string input_folder { get; set; }
 
         //ps3 config
         public string ps3_xml_path { get; set; }
@@ -25,7 +27,7 @@ namespace SuiMerger
 
     class InputInfo
     {
-        public string path { get; set; }
+        public string filename { get; set; }
         public List<List<int>> ps3_regions { get; set; } //array of 2 element regions defining sections of the ps3 to match against, IN ORDER 
     }
 
@@ -44,7 +46,7 @@ namespace SuiMerger
                     //check for a region which is not length 2
                     if(region.Count != 2)
                     {
-                        Console.WriteLine($"Error parsing info for {inputInfo.path}: Region should be length 2 but is length {region.Count}");
+                        Console.WriteLine($"Error parsing info for {inputInfo.filename}: Region should be length 2 but is length {region.Count}");
                         configOK = false;
                         continue;
                     }
@@ -52,7 +54,7 @@ namespace SuiMerger
                     //check for a region where the start value is greater than the end value
                     if(region[0] > region[1])
                     {
-                        Console.WriteLine($"Error parsing info for {inputInfo.path}: Start is greater than end [{region[0]},{region[1]}]");
+                        Console.WriteLine($"Error parsing info for {inputInfo.filename}: Start is greater than end [{region[0]},{region[1]}]");
                         configOK = false;
                         continue;
                     }
