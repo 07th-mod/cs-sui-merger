@@ -268,7 +268,12 @@ namespace SuiMerger
             PrintSideBySideDiff(alignmentPoints, debug_side_by_side_diff_path_MG, debug_side_by_side_diff_path_PS3);
 
             //Insert PS3 instructions
-            SaveMergedMGScript(alignmentPoints, Path.Combine(config.output_folder, pathNoExt + "_merged.txt"), mg_leftovers);
+            string mergedOutputPath = Path.Combine(config.output_folder, pathNoExt + "_merged.txt");
+            SaveMergedMGScript(alignmentPoints, mergedOutputPath, mg_leftovers);
+
+            //Use the inserted instructions
+            UseInformation.InsertMGLinesUsingPS3XML(mergedOutputPath, Path.Combine(config.output_folder, pathNoExt + "_bgm.txt"));
+
         }
 
         static int Main(string[] args)
@@ -277,7 +282,7 @@ namespace SuiMerger
             //and so can see japanese characters (you might need to change your console font too to MS Gothic or similar)
             Console.OutputEncoding = System.Text.Encoding.UTF8;
 
-            MergerConfiguration config = HintParser.ParseTOML("test.toml");
+            MergerConfiguration config = HintParser.ParseTOML("conf.toml");
             if (config == null)
             {
                 Console.WriteLine("Can't continue - config file is not valid!");
@@ -313,8 +318,6 @@ namespace SuiMerger
             {
                 ProcessSingleFile(pS3DialogueInstructionsPreFilter, config, inputInfo);
             }
-
-            UseInformation.InsertMGLinesUsingPS3XML(@"output\tsumi_025_3_merged.txt", @"output\tsumi_025_3_bgm.txt");
 
             Console.WriteLine("\n\nProgram Finished!");
             Console.ReadLine();
