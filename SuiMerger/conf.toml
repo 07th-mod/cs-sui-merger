@@ -1,0 +1,33 @@
+# NOTE: USE FORWARD SLASHES IN PATHS
+# IF YOU NEED TO USE BACKWARD SLASHES, USE TRIPLE QUOTES: '''c:\temp'''
+
+# enable debug output
+debug = true
+
+# set working directory - all relative paths will be relative to this folder
+# must be absolute path, or "." if you want the current directory
+working_directory = "c:/tempsui2"
+
+# temporary folder to put diffs of each file and debug files
+temp_folder = "diff_temp"
+
+# folder to put the output mg scripts with merged ps3 instructions
+output_folder = "output"
+
+# if xml_path is a folder, will concatenate all the xml files in the folder
+# into one file (will use the last part of filename for order)
+# eg *_0.xml, *_1.xml ... *_42.xml will be concatenated in that order
+# if xml_path is a file, will directly use the specified xml file
+ps3_xml_path = "sui_xml_NOT_translated.xml"
+
+#where to saved the concatenated xml file, if merging a folder of xml files
+ps3_merged_output_path = "merged_sui.xml"
+
+[[input]]
+path = "input/tsumi_025_3.txt"
+ps3_regions = [ [91816,92563] ]
+
+
+#[[input]]
+#path = "tsumi_026.txt"
+#ps3_regions = [ [92565, 93391] ]
