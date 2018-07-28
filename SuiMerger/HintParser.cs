@@ -23,6 +23,8 @@ namespace SuiMerger
 
         public string guessed_matches { get; set; }
 
+        public bool trim_after_diff { get; set; }
+
         //per each mg input config
         public List<InputInfo> input { get; set; }
     }

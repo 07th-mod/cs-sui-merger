@@ -251,6 +251,41 @@ namespace SuiMerger
             Environment.Exit(-1);
         }
 
+        static List<AlignmentPoint> TrimAlignmentPoints(List<AlignmentPoint> alignmentPoints)
+        {
+            //assume entire match region (incase triming can't be done found)
+            int firstMatch = 0;
+            int lastMatch = alignmentPoints.Count-1;
+            
+            for(int i = 0; i < alignmentPoints.Count; i++)
+            {
+                AlignmentPoint ap = alignmentPoints[i];
+                if (ap.mangaGamerDialogue != null)
+                {
+                    firstMatch = i;
+                    break;
+                }
+            }
+
+            for(int i = alignmentPoints.Count - 1; i > 0; i--)
+            {
+                AlignmentPoint ap = alignmentPoints[i];
+                if (ap.mangaGamerDialogue != null)
+                {
+                    lastMatch = i;
+                    break;
+                }
+            }
+
+            List<AlignmentPoint> trimmedAlignmentPoints = new List<AlignmentPoint>();
+            for(int i = firstMatch; i <= lastMatch; i++)
+            {
+                trimmedAlignmentPoints.Add(alignmentPoints[i]);
+            }
+
+            return trimmedAlignmentPoints;
+        }
+
         static void ProcessSingleFile(List<PS3DialogueInstruction> pS3DialogueInstructionsPreFilter, MergerConfiguration config, InputInfo mgInfo, List<InputInfo> guessedInputInfos)
         {
             string fullPath = Path.Combine(config.input_folder, mgInfo.path);
@@ -265,10 +300,13 @@ namespace SuiMerger
             List<MangaGamerDialogue> allMangaGamerDialogue = MangaGamerScriptReader.GetDialogueLinesFromMangaGamerScript(fullPath, out List<string> mg_leftovers);
 
             //Diff the dialogue
-            List<AlignmentPoint> alignmentPoints = Differ.DoDiff(config.temp_folder, allMangaGamerDialogue, pS3DialogueInstructions, out List<PS3DialogueFragment> fragments, debugFilenamePrefix: pathNoExt);
+            List<AlignmentPoint> allAlignmentPoints = Differ.DoDiff(config.temp_folder, allMangaGamerDialogue, pS3DialogueInstructions, out List<PS3DialogueFragment> fragments, debugFilenamePrefix: pathNoExt);
 
             //Sanity check the alignment points by making sure there aren't missing any values
-            SanityCheckAlignmentPoints(alignmentPoints, allMangaGamerDialogue, fragments);
+            SanityCheckAlignmentPoints(allAlignmentPoints, allMangaGamerDialogue, fragments);
+
+            //trim alignment points to reduce output
+            List<AlignmentPoint> alignmentPoints = config.trim_after_diff ? TrimAlignmentPoints(allAlignmentPoints) : allAlignmentPoints;
 
             //DEBUG: generate the side-by-side diff
             PrintSideBySideDiff(alignmentPoints, debug_side_by_side_diff_path_MG, debug_side_by_side_diff_path_PS3);
@@ -283,8 +321,8 @@ namespace SuiMerger
             //Printout guessed ps3 region if region not specified in config file
             if(mgInfo.ps3_regions.Count == 0)
             {
-                int firstMatch = -1;
-                int lastMatch = -1;
+                int firstMatchID = -1;
+                int lastMatchID = -1;
 
                 PS3DialogueInstruction ps3Parent = null;
 
@@ -298,9 +336,9 @@ namespace SuiMerger
                         {
                             ps3Parent = ap.ps3DialogFragment.parent;
                             //record the match so it can be saved to an output file
-                            if (firstMatch == -1)
+                            if (firstMatchID == -1)
                             {
-                                firstMatch = ps3Parent.ID;
+                                firstMatchID = ps3Parent.ID;
                             }
 
                             Console.WriteLine($"\tStart {numFound}: {ps3Parent.ID} - {ps3Parent.translatedRawXML}");
@@ -323,9 +361,9 @@ namespace SuiMerger
                         {
                             ps3Parent = ap.ps3DialogFragment.parent;
                             //record the match so it can be saved to an output file
-                            if (lastMatch == -1)
+                            if (lastMatchID == -1)
                             {
-                                lastMatch = ps3Parent.ID;
+                                lastMatchID = ps3Parent.ID;
                             }
 
                             Console.WriteLine($"\tEnd {numFound}: {ps3Parent.ID} - {ps3Parent.translatedRawXML}");
@@ -337,13 +375,26 @@ namespace SuiMerger
                     }
                 }
 
+                
+                List<List<int>> regions;
+                //check for invalid match region
+                if (firstMatchID == -1 || lastMatchID == -1)
+                {
+                    Console.WriteLine($"[  Warn  ]: Can't find match region for {mgInfo.path}");
+                    regions = new List<List<int>>();
+                }
+                else
+                {
+                    regions = new List<List<int>>
+                    {
+                        new List<int> {firstMatchID, lastMatchID}
+                    };
+                }
+
                 guessedInputInfos.Add(new InputInfo
                 {
                     path = mgInfo.path,
-                    ps3_regions = new List<List<int>>
-                    {
-                        new List<int> {firstMatch, lastMatch}
-                    },
+                    ps3_regions = regions,
                 });
             }
         }

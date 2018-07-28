@@ -6,7 +6,7 @@ debug = true
 
 # set working directory - all relative paths will be relative to this folder
 # must be absolute path, or "." if you want the current directory
-working_directory = "c:/tempsui2"
+working_directory = "../"
 
 # temporary folder to put diffs of each file and debug files
 temp_folder = "diff_temp"
@@ -21,7 +21,7 @@ output_folder = "output"
 # into one file (will use the last part of filename for order)
 # eg *_0.xml, *_1.xml ... *_42.xml will be concatenated in that order
 # if xml_path is a file, will directly use the specified xml file
-ps3_xml_path = "sui_xml_NOT_translated.xml"
+ps3_xml_path = "data/sui_xml_NOT_translated.xml"
 
 #where to saved the concatenated xml file, if merging a folder of xml files
 ps3_merged_output_path = "merged_sui.xml"
@@ -33,6 +33,7 @@ input_folder = "input"
 
 # if any inputs, this path will be used to put the guessed matches in .toml format
 guessed_matches = "guessed_matches.toml"
+
 
 [[input]]
 path = "tsumi_025_3.txt"
