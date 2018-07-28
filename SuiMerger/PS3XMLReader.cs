@@ -50,11 +50,11 @@ namespace SuiMerger
                         break;
 
                     case XmlNodeType.XmlDeclaration:
-                        Console.WriteLine("Skipping XML Declaration");
+                        //Console.WriteLine("Skipping XML Declaration");
                         break;
 
                     case XmlNodeType.Comment:
-                        Console.WriteLine($"Skipping XML comment {reader.Value}");
+                        //Console.WriteLine($"Skipping XML comment {reader.Value}");
                         break;
 
                     default:
