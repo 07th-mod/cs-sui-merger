@@ -135,6 +135,76 @@ namespace SuiMerger
         static Regex fadeOutBGMMusicCH2Regex = new Regex(@"\tFadeOutBGM\(\s*2", RegexOptions.IgnoreCase);
         static Regex dialogueRegex = new Regex(@"\tOutputLine\(", RegexOptions.IgnoreCase);
 
+        public static void HandlePS3Chunk(string ps3Chunk, List<MangaGamerInstruction> linesToOutput)
+        {
+            List<MangaGamerInstruction> instructionsToInsert = new List<MangaGamerInstruction>();
+
+            //Read through the ps3 chunk of xml and generate instruction objects for the targeted instructions
+            PS3InstructionReader ps3Reader = new PS3InstructionReader(new StringReader(ps3Chunk));
+            while (ps3Reader.AdvanceToNextInstruction())
+            {
+                switch (ps3Reader.reader.GetAttribute("type"))
+                {
+                    case "BGM_PLAY":
+                        string bgmFileName = ps3Reader.reader.GetAttribute("bgm_file");
+                        instructionsToInsert.Add(new MGPlayBGM(2, bgmFileName, true));
+                        break;
+
+                    case "BGM_FADE":
+                        int duration = Convert.ToInt32(ps3Reader.reader.GetAttribute("duration"));
+                        instructionsToInsert.Add(new MGFadeOutBGM(2, duration, true));
+                        break;
+                }
+            }
+
+            //Only insert only the last play/fadebgm instruction in the list
+            MangaGamerInstruction lastFadeBGMOrPlayBGM = null;
+            foreach (MangaGamerInstruction mgInstruction in instructionsToInsert)
+            {
+                switch (mgInstruction)
+                {
+                    case MGPlayBGM playBGM:
+                        Console.WriteLine($"Found BGM play: {playBGM.GetInstructionForScript()}");
+                        lastFadeBGMOrPlayBGM = playBGM;
+                        break;
+
+                    case MGFadeOutBGM fadeBGM:
+                        Console.WriteLine($"Found BGM fade: {fadeBGM.GetInstructionForScript()}");
+                        lastFadeBGMOrPlayBGM = fadeBGM;
+                        break;
+                }
+            }
+
+            if (lastFadeBGMOrPlayBGM != null)
+            {
+                //When writing out instructions, need to add a \t otherwise game won't recognize it
+                Console.WriteLine($"In this chunk, selected: {lastFadeBGMOrPlayBGM.GetInstructionForScript()}");
+
+                //find a good spot to insert the instruction, depending on the type
+                Regex insertionPointRegex = lastFadeBGMOrPlayBGM is MGPlayBGM ? playBGMMusicCH2Regex : fadeOutBGMMusicCH2Regex;
+
+                //search backwards in the current output until finding the insertion point regex (PlayBGM( or FadeOutBGM()
+                //however if find a dialogue line, give up and just insert at the end of the list (where the ps3 xml is)
+                for (int i = linesToOutput.Count - 1; i > 0; i--)
+                {
+                    MangaGamerInstruction currentLine = linesToOutput[i];
+                    if (dialogueRegex.IsMatch(currentLine.GetInstructionForScript()))
+                    {
+                        //insert at end of list
+                        linesToOutput.Add(lastFadeBGMOrPlayBGM);
+                        break;
+                    }
+                    else if (insertionPointRegex.IsMatch(currentLine.GetInstructionForScript()))
+                    {
+                        //replace similar instruction with this instruction
+                        linesToOutput[i] = lastFadeBGMOrPlayBGM;
+                        break;
+                    }
+                }
+
+            }
+        }
+
         public static void InsertMGLinesUsingPS3XML(string mergedMGScriptPath, string outputPath)
         {
             List<MangaGamerInstruction> linesToOutput = new List<MangaGamerInstruction>();
@@ -145,84 +215,13 @@ namespace SuiMerger
                 string mgScriptLine;
                 while ((mgScriptLine = mgScript.ReadLine()) != null)
                 {
-                    //TODO: handle commented lines here
+                    //TODO: handle commented lines here?
 
-                    //Handle XML data if there is any
+                    //Handle XML data if there is any by inserting instructions into output script
                     string ps3Chunk = chunkFinder.Update(mgScriptLine);
                     if (ps3Chunk != null)
                     {
-                        List<MangaGamerInstruction> instructionsToInsert = new List<MangaGamerInstruction>();
-                        //foreach(string inst in outputInstructions)
-                        /*{
-                            Console.WriteLine(ps3Chunk);
-                        }*/
-
-                        PS3InstructionReader ps3Reader = new PS3InstructionReader(new StringReader(ps3Chunk));
-                        while (ps3Reader.AdvanceToNextInstruction())
-                        {
-                            switch(ps3Reader.reader.GetAttribute("type"))
-                            {
-                                case "BGM_PLAY":
-                                    string bgmFileName = ps3Reader.reader.GetAttribute("bgm_file");
-                                    instructionsToInsert.Add(new MGPlayBGM(2, bgmFileName, true));
-                                    break;
-
-                                case "BGM_FADE":
-                                    int duration = Convert.ToInt32(ps3Reader.reader.GetAttribute("duration"));
-                                    instructionsToInsert.Add(new MGFadeOutBGM(2, duration, true));
-                                    break;
-                            }
-
-                            //Console.WriteLine("Got data:" + ps3Reader.reader.ReadOuterXml());
-                        }
-
-                        //Only insert only the last play/fadebgm instruction in the list
-                        MangaGamerInstruction lastFadeBGMOrPlayBGM = null;
-                        foreach (MangaGamerInstruction mgInstruction in instructionsToInsert)
-                        {
-                            switch(mgInstruction)
-                            {
-                                case MGPlayBGM playBGM:
-                                    Console.WriteLine($"Found BGM play: {playBGM.GetInstructionForScript()}");
-                                    lastFadeBGMOrPlayBGM = playBGM;
-                                    break;
-
-                                case MGFadeOutBGM fadeBGM:
-                                    Console.WriteLine($"Found BGM fade: {fadeBGM.GetInstructionForScript()}");
-                                    lastFadeBGMOrPlayBGM = fadeBGM;
-                                    break;
-                            }
-                        }
-
-                        if (lastFadeBGMOrPlayBGM != null)
-                        {
-                            //When writing out instructions, need to add a \t otherwise game won't recognize it
-                            Console.WriteLine($"In this chunk, selected: {lastFadeBGMOrPlayBGM.GetInstructionForScript()}");
-
-                            //find a good spot to insert the instruction, depending on the type
-                            Regex insertionPointRegex = lastFadeBGMOrPlayBGM is MGPlayBGM ? playBGMMusicCH2Regex : fadeOutBGMMusicCH2Regex;
-
-                            //search backwards in the current output until finding the insertion point regex
-                            //however if find a dialogue line, give up and just insert at the end of the list (where the ps3 xml is)
-                            for(int i = linesToOutput.Count-1; i > 0; i--)
-                            {
-                                MangaGamerInstruction currentLine = linesToOutput[i];
-                                if (dialogueRegex.IsMatch(currentLine.GetInstructionForScript()))
-                                {
-                                    //insert at end of list
-                                    linesToOutput.Add(lastFadeBGMOrPlayBGM);
-                                    break;
-                                }
-                                else if(insertionPointRegex.IsMatch(currentLine.GetInstructionForScript()))
-                                {
-                                    //replace similar instruction with this instruction
-                                    linesToOutput[i] = lastFadeBGMOrPlayBGM;
-                                    break;
-                                }
-                            }
-
-                        }
-
+                        HandlePS3Chunk(ps3Chunk, linesToOutput);
                     }
 
                     //Handle original mg lines here
