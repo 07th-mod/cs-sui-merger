@@ -10,7 +10,15 @@ namespace SuiMerger
 {
     abstract class MangaGamerInstruction
     {
-        public abstract override string ToString();
+        //gets the instruction, without the tab character or newline
+        protected abstract string GetInstruction();
+
+        //returns the instruction string with tab character
+        public string GetInstructionForScript()
+        {
+            return $"\t{GetInstruction()}";
+        }
+
     }
 
     class MGPlayBGM : MangaGamerInstruction
@@ -22,7 +30,7 @@ namespace SuiMerger
             this.bgmFileName = bgmFileName;
         }
 
-        public override string ToString()
+        protected override string GetInstruction()
         {
             return $"PlayBGM( 0, \"{bgmFileName}\", 128, 0 );";
         }
@@ -39,7 +47,7 @@ namespace SuiMerger
             this.fadeTime = (int)Math.Round(ps3Duration / 60.0 * 1000.0);
         }
 
-        public override string ToString()
+        protected override string GetInstruction()
         {
             return $"FadeOutBGM( {channel}, {fadeTime}, FALSE );";
         }
@@ -87,8 +95,8 @@ namespace SuiMerger
     class UseInformation
     {
         //Regexes used to parse the hybrid script
-        static Regex playBGMRegex = new Regex(@"PlayBGM\(", RegexOptions.IgnoreCase);
-        static Regex fadeOutBGMRegex = new Regex(@"FadeOutBGM\(", RegexOptions.IgnoreCase);
+        static Regex playBGMMusicCH2Regex = new Regex(@"\tPlayBGM\(\s*2", RegexOptions.IgnoreCase);
+        static Regex fadeOutBGMMusicCH2Regex = new Regex(@"\tFadeOutBGM\(\s*2", RegexOptions.IgnoreCase);
 
         public static void InsertMGLinesUsingPS3XML(string mergedMGScriptPath, string outputPath)
         {
@@ -130,28 +138,49 @@ namespace SuiMerger
                             //Console.WriteLine("Got data:" + ps3Reader.reader.ReadOuterXml());
                         }
 
-                        //When writing out instructions, need to add a \t otherwise game won't recognize it
-                        foreach(MangaGamerInstruction mgInstruction in instructionsToInsert)
+                        //Only insert only the last play/fadebgm instruction in the list
+                        MangaGamerInstruction lastFadeBGMOrPlayBGM = null;
+                        foreach (MangaGamerInstruction mgInstruction in instructionsToInsert)
                         {
                             switch(mgInstruction)
                             {
                                 case MGPlayBGM playBGM:
-                                    Console.WriteLine($"Found BGM play string, will add: {playBGM.ToString()}");
+                                    Console.WriteLine($"Found BGM play: {playBGM.GetInstructionForScript()}");
+                                    lastFadeBGMOrPlayBGM = playBGM;
                                     break;
 
                                 case MGFadeOutBGM fadeBGM:
-                                    Console.WriteLine($"Found BGM fade string, will add: {fadeBGM}");
+                                    Console.WriteLine($"Found BGM fade: {fadeBGM.GetInstructionForScript()}");
+                                    lastFadeBGMOrPlayBGM = fadeBGM;
                                     break;
                             }
-
-                            outputFile.WriteLine($"\t{mgInstruction.ToString()}");
                         }
+
+                        if (lastFadeBGMOrPlayBGM != null)
+                        {
+                            //When writing out instructions, need to add a \t otherwise game won't recognize it
+                            Console.WriteLine($"In this chunk, selected: {lastFadeBGMOrPlayBGM.GetInstructionForScript()}");
+                            outputFile.WriteLine(lastFadeBGMOrPlayBGM.GetInstructionForScript());
+                        }
+
                     }
 
                     //Handle original mg lines here
                     if(!chunkFinder.LastLineWasXML())
                     {
-                        outputFile.WriteLine(mgScriptLine);
+                        //add a fadebgm before last line of the script
+                        if (mgScriptLine.Trim() == "}")
+                        {
+                            outputFile.WriteLine("\tFadeOutBGM(0,1000,FALSE);");
+                        }
+
+                        //remove exisiting playBGM and fadeBGM lines. Note that sometimes the mg script uses
+                        //playbgm to play sound effects/ambience, but other channels are used (channel 0 and 1)
+                        bool lineIsPlayBGMOrFadeBGM = playBGMMusicCH2Regex.IsMatch(mgScriptLine) || fadeOutBGMMusicCH2Regex.IsMatch(mgScriptLine);
+                        if (!lineIsPlayBGMOrFadeBGM)
+                        {
+                            outputFile.WriteLine(mgScriptLine);
+                        }
                     }
                 }
             }
