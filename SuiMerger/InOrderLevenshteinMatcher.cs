@@ -82,7 +82,7 @@ namespace SuiMerger
 
                 if (inLowerRange || inUpperRange)
                 {
-                    Console.WriteLine($"\n Adding {bestResult.ToString()}");
+                    DebugUtils.Print($"\n Adding {bestResult.ToString()}");
                     greedyLevenshteinSubset.Add(bestResult);
                 }
 
@@ -91,8 +91,8 @@ namespace SuiMerger
                     minMG = bestResult.mgIndex;
                     minPS3 = bestResult.ps3Index;
 
-                    Console.WriteLine($"min mg was  {minMG} now {bestResult.mgIndex}");
-                    Console.WriteLine($"min ps3 was {minPS3} now {bestResult.ps3Index}");
+                    DebugUtils.Print($"min mg was  {minMG} now {bestResult.mgIndex}");
+                    DebugUtils.Print($"min ps3 was {minPS3} now {bestResult.ps3Index}");
                 }
 
                 if (inUpperRange)
@@ -100,13 +100,13 @@ namespace SuiMerger
                     maxMG = bestResult.mgIndex;
                     maxPS3 = bestResult.ps3Index;
 
-                    Console.WriteLine($"max mg was  {maxMG} now {bestResult.mgIndex}");
-                    Console.WriteLine($"max ps3 was {maxPS3} now {bestResult.ps3Index}");
+                    DebugUtils.Print($"max mg was  {maxMG} now {bestResult.mgIndex}");
+                    DebugUtils.Print($"max ps3 was {maxPS3} now {bestResult.ps3Index}");
                 }
 
                 if((minMG == 0 || minPS3 == 0) && (maxMG == (lengthMG - 1)  || (maxPS3 == lengthPS3 - 1)))
                 {
-                    Console.WriteLine($"Finishing early min:({minMG},{minPS3}) max:({maxMG},{maxPS3})");
+                    DebugUtils.Print($"Finishing early min:({minMG},{minPS3}) max:({maxMG},{maxPS3})");
                     break;
                 }
             }
@@ -123,9 +123,9 @@ namespace SuiMerger
 
             foreach (LevenshteinResult result in allLevenshteinResultsSorted)
             {
-                Console.WriteLine("\n" + result.ToString());
-                Console.WriteLine(unmatchedmgs[result.mgIndex].data);
-                Console.WriteLine(unmatchedPS3[result.ps3Index].data);
+                DebugUtils.Print("\n" + result.ToString());
+                DebugUtils.Print(unmatchedmgs[result.mgIndex].data);
+                DebugUtils.Print(unmatchedPS3[result.ps3Index].data);
             }
 
             //Now greedily retreive the best matches. This step is required if the best matches imply out-of-order matching, 

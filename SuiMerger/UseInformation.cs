@@ -160,27 +160,30 @@ namespace SuiMerger
             //Only insert only the last play/fadebgm instruction in the list
             MangaGamerInstruction lastFade = null;
             MangaGamerInstruction lastBGMPlay = null;
+
             foreach (MangaGamerInstruction mgInstruction in instructionsToInsert)
             {
                 switch (mgInstruction)
                 {
                     case MGPlayBGM playBGM:
-                        Console.WriteLine($"Found BGM play: {playBGM.GetInstructionForScript()}");
+                        DebugUtils.Print($"Found BGM play: {playBGM.GetInstructionForScript()}");
                         lastBGMPlay = playBGM;
                         break;
 
                     case MGFadeOutBGM fadeBGM:
-                        Console.WriteLine($"Found BGM fade: {fadeBGM.GetInstructionForScript()}");
+                        DebugUtils.Print($"Found BGM fade: {fadeBGM.GetInstructionForScript()}");
                         lastFade = fadeBGM;
                         break;
                 }
             }
 
             MangaGamerInstruction lastFadeBGMOrPlayBGM = lastBGMPlay != null ? lastBGMPlay : lastFade;
+
+
             if (lastFadeBGMOrPlayBGM != null)
             {
                 //When writing out instructions, need to add a \t otherwise game won't recognize it
-                Console.WriteLine($"In this chunk, selected: {lastFadeBGMOrPlayBGM.GetInstructionForScript()}");
+                DebugUtils.Print($"In this chunk, selected: {lastFadeBGMOrPlayBGM.GetInstructionForScript()}");
 
                 //find a good spot to insert the instruction, depending on the type
                 Regex insertionPointRegex = lastFadeBGMOrPlayBGM is MGPlayBGM ? playBGMMusicCH2Regex : fadeOutBGMMusicCH2Regex;

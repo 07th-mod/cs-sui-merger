@@ -153,12 +153,12 @@ namespace SuiMerger
             HashSet<int> alreadySeenPS3ParentIDs = new HashSet<int>();
             Dictionary<int, PS3DialogueFragment> ps3DialogueIDToFirstFragmentMapping = new Dictionary<int, PS3DialogueFragment>();
 
-            Console.WriteLine("------------------------------------");
+            DebugUtils.Print("------------------------------------");
             foreach (AlignmentPoint ap in unmatchedSequence)
             {
                 if (ap.mangaGamerDialogue != null)
                 {
-                    Console.WriteLine($"MG line: {ap.mangaGamerDialogue.data}");
+                    DebugUtils.Print($"MG line: {ap.mangaGamerDialogue.data}");
                     unmatchedMGs.Add(ap.mangaGamerDialogue);
                 }
 
@@ -170,11 +170,11 @@ namespace SuiMerger
                     {
                         ps3DialogueIDToFirstFragmentMapping.Add(ap.ps3DialogFragment.parent.ID, ap.ps3DialogFragment);
                         alreadySeenPS3ParentIDs.Add(ap.ps3DialogFragment.parent.ID);
-                        Console.WriteLine($"PS3 parent of below missing fragments [{ap.ps3DialogFragment.parent.ID}]: {ap.ps3DialogFragment.parent.data}");
+                        DebugUtils.Print($"PS3 parent of below missing fragments [{ap.ps3DialogFragment.parent.ID}]: {ap.ps3DialogFragment.parent.data}");
                         unmatchedPS3s.Add(ap.ps3DialogFragment.parent);
                     }
 
-                    Console.WriteLine($"PS3 child [{ap.ps3DialogFragment.parent.ID}]: {ap.ps3DialogFragment.data}");
+                    DebugUtils.Print($"PS3 child [{ap.ps3DialogFragment.parent.ID}]: {ap.ps3DialogFragment.data}");
                 }
             }
 
@@ -196,7 +196,7 @@ namespace SuiMerger
             //Debug: Print out re-assigned alignment points for debugging
             foreach (AlignmentPoint ap in reAssociatedAlignmentPoints)
             {
-                Console.WriteLine(ap.ToString());
+                DebugUtils.Print(ap.ToString());
             }
 
             return reAssociatedAlignmentPoints;            
