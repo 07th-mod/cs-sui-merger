@@ -158,23 +158,25 @@ namespace SuiMerger
             }
 
             //Only insert only the last play/fadebgm instruction in the list
-            MangaGamerInstruction lastFadeBGMOrPlayBGM = null;
+            MangaGamerInstruction lastFade = null;
+            MangaGamerInstruction lastBGMPlay = null;
             foreach (MangaGamerInstruction mgInstruction in instructionsToInsert)
             {
                 switch (mgInstruction)
                 {
                     case MGPlayBGM playBGM:
                         Console.WriteLine($"Found BGM play: {playBGM.GetInstructionForScript()}");
-                        lastFadeBGMOrPlayBGM = playBGM;
+                        lastBGMPlay = playBGM;
                         break;
 
                     case MGFadeOutBGM fadeBGM:
                         Console.WriteLine($"Found BGM fade: {fadeBGM.GetInstructionForScript()}");
-                        lastFadeBGMOrPlayBGM = fadeBGM;
+                        lastFade = fadeBGM;
                         break;
                 }
             }
 
+            MangaGamerInstruction lastFadeBGMOrPlayBGM = lastBGMPlay != null ? lastBGMPlay : lastFade;
             if (lastFadeBGMOrPlayBGM != null)
             {
                 //When writing out instructions, need to add a \t otherwise game won't recognize it
