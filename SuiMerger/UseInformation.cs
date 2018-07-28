@@ -10,29 +10,50 @@ namespace SuiMerger
 {
     abstract class MangaGamerInstruction
     {
+        private readonly bool isPS3;   //use to flag which classes are ps3 
+        private readonly bool noTab;
+
+        protected MangaGamerInstruction(bool isPS3, bool noTab)
+        {
+            this.isPS3 = isPS3;
+            this.noTab = noTab;
+        }
+
         //gets the instruction, without the tab character or newline
         protected abstract string GetInstruction();
 
         //returns the instruction string with tab character
         public string GetInstructionForScript()
         {
-            return $"\t{GetInstruction()}";
+            if(noTab)
+            {
+                return GetInstruction();
+            }
+            else
+            {
+                return $"\t{GetInstruction()}";
+            }
         }
+
+        //returns true if instruction originated from PS3 xml
+        public bool IsPS3() => isPS3;
 
     }
 
     class MGPlayBGM : MangaGamerInstruction
     {
+        readonly int channel;
         readonly string bgmFileName;
 
-        public MGPlayBGM(string bgmFileName)
+        public MGPlayBGM(int channel, string bgmFileName, bool isPS3) : base(isPS3, false)
         {
+            this.channel = channel;
             this.bgmFileName = bgmFileName;
         }
 
         protected override string GetInstruction()
         {
-            return $"PlayBGM( 0, \"{bgmFileName}\", 128, 0 );";
+            return $"PlayBGM( {channel}, \"{bgmFileName}\", 128, 0 );";
         }
     }
 
@@ -41,7 +62,7 @@ namespace SuiMerger
         readonly int channel;
         readonly int fadeTime;
 
-        public MGFadeOutBGM(int channel, int ps3Duration)
+        public MGFadeOutBGM(int channel, int ps3Duration, bool isPS3) : base(isPS3, false)
         {
             this.channel = channel;
             this.fadeTime = (int)Math.Round(ps3Duration / 60.0 * 1000.0);
@@ -50,6 +71,21 @@ namespace SuiMerger
         protected override string GetInstruction()
         {
             return $"FadeOutBGM( {channel}, {fadeTime}, FALSE );";
+        }
+    }
+
+    class GenericInstruction : MangaGamerInstruction
+    {
+        readonly string data;
+
+        public GenericInstruction(string data, bool isPS3) : base(isPS3, true)
+        {
+            this.data = data;
+        }
+
+        protected override string GetInstruction()
+        {
+            return data;
         }
     }
 
@@ -97,10 +133,12 @@ namespace SuiMerger
         //Regexes used to parse the hybrid script
         static Regex playBGMMusicCH2Regex = new Regex(@"\tPlayBGM\(\s*2", RegexOptions.IgnoreCase);
         static Regex fadeOutBGMMusicCH2Regex = new Regex(@"\tFadeOutBGM\(\s*2", RegexOptions.IgnoreCase);
+        static Regex dialogueRegex = new Regex(@"\tOutputLine\(", RegexOptions.IgnoreCase);
 
         public static void InsertMGLinesUsingPS3XML(string mergedMGScriptPath, string outputPath)
         {
-            using (StreamWriter outputFile = FileUtils.CreateDirectoriesAndOpen(outputPath, FileMode.Create))
+            List<MangaGamerInstruction> linesToOutput = new List<MangaGamerInstruction>();
+
             using (StreamReader mgScript = new StreamReader(mergedMGScriptPath, Encoding.UTF8))
             {
                 PS3XMLChunkFinder chunkFinder = new PS3XMLChunkFinder();
@@ -126,12 +164,12 @@ namespace SuiMerger
                             {
                                 case "BGM_PLAY":
                                     string bgmFileName = ps3Reader.reader.GetAttribute("bgm_file");
-                                    instructionsToInsert.Add(new MGPlayBGM(bgmFileName));
+                                    instructionsToInsert.Add(new MGPlayBGM(2, bgmFileName, true));
                                     break;
 
                                 case "BGM_FADE":
                                     int duration = Convert.ToInt32(ps3Reader.reader.GetAttribute("duration"));
-                                    instructionsToInsert.Add(new MGFadeOutBGM(0, duration));
+                                    instructionsToInsert.Add(new MGFadeOutBGM(2, duration, true));
                                     break;
                             }
 
@@ -160,7 +198,29 @@ namespace SuiMerger
                         {
                             //When writing out instructions, need to add a \t otherwise game won't recognize it
                             Console.WriteLine($"In this chunk, selected: {lastFadeBGMOrPlayBGM.GetInstructionForScript()}");
-                            outputFile.WriteLine(lastFadeBGMOrPlayBGM.GetInstructionForScript());
+
+                            //find a good spot to insert the instruction, depending on the type
+                            Regex insertionPointRegex = lastFadeBGMOrPlayBGM is MGPlayBGM ? playBGMMusicCH2Regex : fadeOutBGMMusicCH2Regex;
+
+                            //search backwards in the current output until finding the insertion point regex
+                            //however if find a dialogue line, give up and just insert at the end of the list (where the ps3 xml is)
+                            for(int i = linesToOutput.Count-1; i > 0; i--)
+                            {
+                                MangaGamerInstruction currentLine = linesToOutput[i];
+                                if (dialogueRegex.IsMatch(currentLine.GetInstructionForScript()))
+                                {
+                                    //insert at end of list
+                                    linesToOutput.Add(lastFadeBGMOrPlayBGM);
+                                    break;
+                                }
+                                else if(insertionPointRegex.IsMatch(currentLine.GetInstructionForScript()))
+                                {
+                                    //replace similar instruction with this instruction
+                                    linesToOutput[i] = lastFadeBGMOrPlayBGM;
+                                    break;
+                                }
+                            }
+
                         }
 
                     }
@@ -171,17 +231,30 @@ namespace SuiMerger
                         //add a fadebgm before last line of the script
                         if (mgScriptLine.Trim() == "}")
                         {
-                            outputFile.WriteLine("\tFadeOutBGM(0,1000,FALSE);");
+                            linesToOutput.Add(new GenericInstruction("\tFadeOutBGM(0,1000,FALSE);", false));
                         }
 
-                        //remove exisiting playBGM and fadeBGM lines. Note that sometimes the mg script uses
-                        //playbgm to play sound effects/ambience, but other channels are used (channel 0 and 1)
-                        bool lineIsPlayBGMOrFadeBGM = playBGMMusicCH2Regex.IsMatch(mgScriptLine) || fadeOutBGMMusicCH2Regex.IsMatch(mgScriptLine);
-                        if (!lineIsPlayBGMOrFadeBGM)
-                        {
-                            outputFile.WriteLine(mgScriptLine);
-                        }
+                        linesToOutput.Add(new GenericInstruction(mgScriptLine, false));
                     }
+                }
+            }
+
+            //filter, then write lines to output to file
+            using (StreamWriter outputFile = FileUtils.CreateDirectoriesAndOpen(outputPath, FileMode.Create))
+            {
+                foreach(MangaGamerInstruction inst in linesToOutput)
+                {
+                    //clear out any Music (channel 2) BGM or Fade lines from the original manga gamer script
+                    bool lineIsPlayBGMOrFadeBGM = 
+                        playBGMMusicCH2Regex.IsMatch(inst.GetInstructionForScript()) || 
+                        fadeOutBGMMusicCH2Regex.IsMatch(inst.GetInstructionForScript());
+
+                    if (lineIsPlayBGMOrFadeBGM && inst.IsPS3() == false)
+                    {
+                        continue;
+                    }
+
+                    outputFile.WriteLine(inst.GetInstructionForScript());
                 }
             }
         }
