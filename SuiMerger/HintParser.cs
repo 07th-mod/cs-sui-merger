@@ -27,6 +27,9 @@ namespace SuiMerger
 
         //per each mg input config
         public List<InputInfo> input { get; set; }
+
+        //list of folders to search for BGM (used for inserting PS3 BGM)
+        public List<String> bgm_folders { get; set; }
     }
 
     class InputInfo

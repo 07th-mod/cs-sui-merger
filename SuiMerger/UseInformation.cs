@@ -131,11 +131,87 @@ namespace SuiMerger
     class UseInformation
     {
         //Regexes used to parse the hybrid script
-        static Regex playBGMMusicCH2Regex = new Regex(@"\tPlayBGM\(\s*2", RegexOptions.IgnoreCase);
-        static Regex fadeOutBGMMusicCH2Regex = new Regex(@"\tFadeOutBGM\(\s*2", RegexOptions.IgnoreCase);
+        //note: double quote is transformed into single quote in below @ string
+        static Regex playBGMGetFileName = new Regex(@"PlayBGM\(\s*(\d)\s*,\s*""([^""]*)""");
+
+        static Regex playBGMMusicRegex = new Regex(@"\tPlayBGM\(\s*(\d)", RegexOptions.IgnoreCase);
+        static Regex fadeOutBGMMusicRegex = new Regex(@"\tFadeOutBGM\(\s*(\d)", RegexOptions.IgnoreCase);
         static Regex dialogueRegex = new Regex(@"\tOutputLine\(", RegexOptions.IgnoreCase);
 
-        public static void HandlePS3Chunk(string ps3Chunk, List<MangaGamerInstruction> linesToOutput)
+        //Returns the audio length of a given file in seconds (includes fractional part)
+        public static double GetAudioLength(string path) => TagLib.File.Create(path).Properties.Duration.TotalSeconds;
+
+        //This function tries to determine the BGM channel, given a single script line.
+        //If the channel couldn't be determined or is not a music file, will return null. Otherwise returns the channel.
+        // Reasons for channel determination failure are below:
+        //  - doesn't contain a BGMPlay command or has an invalid BGMPlay command
+        //  - audio file in the BGMPlay command couldn't be found
+        //  - audio file in the BGMPlay command is < 30 seconds indicating it's not a music file
+        // List<string> searchFolders - folders to search for the music file
+        // double bgmLengthThresholdSeconds - length in seconds above which an audio file is considered to be BGM
+        public static int? TryGetBGMMusicChannel(string line, List<string> searchFolders, double bgmLengthThresholdSeconds)
+        {
+            //if can't parse line, assume not a playbgm line
+            Match match = playBGMGetFileName.Match(line);
+            if (!match.Success)
+                return null;
+
+            int channel = int.Parse(match.Groups[1].Value);
+            string audioFileName = match.Groups[2].Value;
+
+            //Try to get the audio length, scanning each given folder. If file not found, assume not a playbgm line
+            //Note that in the script, the file extension is not specified - therfore add '.ogg' to filename
+            double? audioLength = null;
+            foreach (string searchFolder in searchFolders)
+            {
+                try
+                {
+                    audioLength = GetAudioLength(Path.Combine(searchFolder, audioFileName + ".ogg"));
+                    break;
+                }
+                catch (Exception e)
+                {
+
+                }
+            }
+
+            if (audioLength == null)
+                return null;
+
+            bool isMusic = audioLength >= bgmLengthThresholdSeconds;
+
+            Console.WriteLine($"Audio file {audioFileName} on channel {channel} is {audioLength} seconds long. Type: {(isMusic ? "Music" : "Not Music")}");
+
+            if(isMusic)
+            {
+                return channel;
+            }
+
+            return null;
+        }
+
+        public static bool LineHasPlayBGMOnChannel(string line, int channel)
+        {
+            Match match = playBGMMusicRegex.Match(line);
+            if (!match.Success)
+                return false;
+
+            return int.Parse(match.Groups[1].Value) == channel;
+        }
+
+        public static bool LineHasFadeOutBGMOnChannel(string line, int channel)
+        {
+            Match match = fadeOutBGMMusicRegex.Match(line);
+            if (!match.Success)
+                return false;
+
+            return int.Parse(match.Groups[1].Value) == channel;
+        }
+
+
+        //Some files use different BGM channels for music (as opposed to background sounds). Another
+        //function should scan the file to determine the BGM channel, and set bgmChannelNumber appropriately
+        public static void HandlePS3Chunk(string ps3Chunk, List<MangaGamerInstruction> linesToOutput, int bgmChannelNumber)
         {
             List<MangaGamerInstruction> instructionsToInsert = new List<MangaGamerInstruction>();
 
@@ -177,6 +253,7 @@ namespace SuiMerger
                 }
             }
 
+            //remember what the last instruction (fade or play bgm) - this is the instruction to be inserted
             MangaGamerInstruction lastFadeBGMOrPlayBGM = lastBGMPlay != null ? lastBGMPlay : lastFade;
 
 
@@ -185,8 +262,8 @@ namespace SuiMerger
                 //When writing out instructions, need to add a \t otherwise game won't recognize it
                 DebugUtils.Print($"In this chunk, selected: {lastFadeBGMOrPlayBGM.GetInstructionForScript()}");
 
-                //find a good spot to insert the instruction, depending on the type
-                Regex insertionPointRegex = lastFadeBGMOrPlayBGM is MGPlayBGM ? playBGMMusicCH2Regex : fadeOutBGMMusicCH2Regex;
+                //find a good spot to insert the instruction, depending on the type (either playBGM or FadeBGM)
+                bool shouldFindPlayBGM = lastFadeBGMOrPlayBGM is MGPlayBGM;
 
                 //search backwards in the current output until finding the insertion point regex (PlayBGM( or FadeOutBGM()
                 //however if find a dialogue line, give up and just insert at the end of the list (where the ps3 xml is)
@@ -199,7 +276,8 @@ namespace SuiMerger
                         linesToOutput.Add(lastFadeBGMOrPlayBGM);
                         break;
                     }
-                    else if (insertionPointRegex.IsMatch(currentLine.GetInstructionForScript()))
+                    else if( ( shouldFindPlayBGM && LineHasPlayBGMOnChannel   (currentLine.GetInstructionForScript(), bgmChannelNumber)) ||
+                             (!shouldFindPlayBGM && LineHasFadeOutBGMOnChannel(currentLine.GetInstructionForScript(), bgmChannelNumber))    )
                     {
                         //replace similar instruction with this instruction
                         linesToOutput[i] = lastFadeBGMOrPlayBGM;
@@ -210,8 +288,65 @@ namespace SuiMerger
             }
         }
 
-        public static void InsertMGLinesUsingPS3XML(string mergedMGScriptPath, string outputPath)
+        public static int? DetectBGMChannel(string mgScriptPath, MergerConfiguration configuration)
         {
+            Dictionary<int, int> channelCounter = new Dictionary<int, int>();
+
+            using (StreamReader mgScript = new StreamReader(mgScriptPath, Encoding.UTF8))
+            {
+                //Count how many times each channel plays a BGM
+                //channel is considered to play a BGM if the file being played is longer than the configured length
+                string line;
+                while ((line = mgScript.ReadLine()) != null)
+                {
+                    int? maybeBGMChannel = TryGetBGMMusicChannel(line, searchFolders : configuration.bgm_folders, bgmLengthThresholdSeconds : 30);
+                    if (maybeBGMChannel != null)
+                    {
+                        int BGMChannel = (int)maybeBGMChannel;
+                        if (channelCounter.ContainsKey(BGMChannel))
+                        {
+                            channelCounter[BGMChannel] += 1;
+                        }
+                        else
+                        {
+                            channelCounter[BGMChannel] = 0;
+                        }
+                    }
+                }
+
+                //TODO: Debug - remove later
+                foreach (KeyValuePair<int, int> item in channelCounter)
+                {
+                    Console.WriteLine($"channel: {item.Key} count: {item.Value}");
+                }
+
+                //return the channel which has the max number of BGM plays
+                foreach (KeyValuePair<int, int> item in channelCounter.OrderByDescending(key => key.Value))
+                {
+                    return item.Key;
+                }
+            }
+
+            //if no playBGMs were found, return null
+            return null;
+        }
+
+        public static void InsertMGLinesUsingPS3XML(string mergedMGScriptPath, string outputPath, MergerConfiguration configuration)
+        {
+            Console.WriteLine("--------- Begin inserting BGM into original script ------");
+            int ? maybeBGMChannel = DetectBGMChannel(mergedMGScriptPath, configuration);
+
+            int bgmChannelNumber = 2;
+            if(maybeBGMChannel != null)
+            {
+                bgmChannelNumber = (int) maybeBGMChannel;
+                Console.WriteLine($"Detected channel [{bgmChannelNumber}] as BGM Channel number");
+            }
+            else
+            {
+                Console.WriteLine($"WARNING: Could not detect bgmChannel for [{mergedMGScriptPath}]. Will use channel 2 when inserting PS3 music");
+            }
+
             List<MangaGamerInstruction> linesToOutput = new List<MangaGamerInstruction>();
 
             using (StreamReader mgScript = new StreamReader(mergedMGScriptPath, Encoding.UTF8))
@@ -226,7 +361,7 @@ namespace SuiMerger
                     string ps3Chunk = chunkFinder.Update(mgScriptLine);
                     if (ps3Chunk != null)
                     {
-                        HandlePS3Chunk(ps3Chunk, linesToOutput);
+                        HandlePS3Chunk(ps3Chunk, linesToOutput, bgmChannelNumber);
                     }
 
                     //Handle original mg lines here
@@ -250,8 +385,8 @@ namespace SuiMerger
                 {
                     //clear out any Music (channel 2) BGM or Fade lines from the original manga gamer script
                     bool lineIsPlayBGMOrFadeBGM = 
-                        playBGMMusicCH2Regex.IsMatch(inst.GetInstructionForScript()) || 
-                        fadeOutBGMMusicCH2Regex.IsMatch(inst.GetInstructionForScript());
+                        LineHasPlayBGMOnChannel(inst.GetInstructionForScript(), bgmChannelNumber) ||
+                        LineHasFadeOutBGMOnChannel(inst.GetInstructionForScript(), bgmChannelNumber);
 
                     if (lineIsPlayBGMOrFadeBGM && inst.IsPS3() == false)
                     {

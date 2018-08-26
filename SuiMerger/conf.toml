@@ -6,7 +6,7 @@ debug = true
 
 # set working directory - all relative paths will be relative to this folder
 # must be absolute path, or "." if you want the current directory
-working_directory = "c:/tempsui2"
+working_directory = '''c:\tempsui2'''
 
 # temporary folder to put diffs of each file and debug files
 temp_folder = "diff_temp"
@@ -33,6 +33,8 @@ input_folder = "input"
 
 # if any inputs, this path will be used to put the guessed matches in .toml format
 guessed_matches = "guessed_matches.toml"
+
+bgm_folders = ['''D:\drojf_temp\BGM''']
 
 [[input]]
 path = "tsumi_025_3.txt"
