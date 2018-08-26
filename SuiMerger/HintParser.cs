@@ -30,6 +30,7 @@ namespace SuiMerger
 
         //list of folders to search for BGM (used for inserting PS3 BGM)
         public List<String> bgm_folders { get; set; }
+        public double music_threshold_seconds { get; set; }
     }
 
     class InputInfo

@@ -299,7 +299,7 @@ namespace SuiMerger
                 string line;
                 while ((line = mgScript.ReadLine()) != null)
                 {
-                    int? maybeBGMChannel = TryGetBGMMusicChannel(line, searchFolders : configuration.bgm_folders, bgmLengthThresholdSeconds : 30);
+                    int? maybeBGMChannel = TryGetBGMMusicChannel(line, searchFolders : configuration.bgm_folders, bgmLengthThresholdSeconds : configuration.music_threshold_seconds);
                     if (maybeBGMChannel != null)
                     {
                         int BGMChannel = (int)maybeBGMChannel;

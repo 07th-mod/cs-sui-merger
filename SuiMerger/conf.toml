@@ -35,6 +35,7 @@ input_folder = "input"
 guessed_matches = "guessed_matches.toml"
 
 bgm_folders = ['''D:\drojf_temp\BGM''']
+music_threshold_seconds = 30.0
 
 [[input]]
 path = "tsumi_025_3.txt"
