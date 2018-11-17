@@ -19,7 +19,7 @@ namespace SuiMerger
             List<string> previousLines = new List<string>();
             foreach (string line in allLines)
             {
-                if (line.Contains("OutputLine") && Differ.PrepareStringForDiff(line).Length > 4)
+                if (line.Contains("OutputLine") && Differ.PrepareStringForDiff(line).Length > 0)
                 {
                     dialogues.Add(new MangaGamerDialogue(lineNumber, line, previousLines));
                     previousLines.Clear();
