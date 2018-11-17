@@ -8,6 +8,10 @@ using System.Threading.Tasks;
 
 namespace SuiMerger
 {
+    /// <summary>
+    /// This class is used to deserialize .toml file using the 'Nett' library.
+    /// See the 'conf.toml' example file.
+    /// </summary>
     class MergerConfiguration
     {
         public bool debug { get; set; }

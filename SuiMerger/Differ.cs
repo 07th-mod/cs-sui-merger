@@ -10,13 +10,21 @@ namespace SuiMerger
 {
     public class Differ
     {
-        //keep only japanese characters
-        //remove spaces
-        //is_japanese_punct = in_range(code_point, 0x3000, 0x303f) NO
-        //is_hiragana = in_range(code_point, 0x3040, 0x309f) YES
-        //is_katakana = in_range(code_point, 0x30a0, 0x30ff) YES
-        //is_ideograph = in_range(code_point, 0x4e00, 0x9faf) YES
-        //this function should also remove newlines etc.
+        /// <summary>
+        /// This function keeps only japanese characters in a string according to the following criteria:
+        /// - keep only japanese characters
+        /// - remove spaces
+        ///
+        ///   TYPE                                                      KEEP
+        /// - is_japanese_punct = in_range(code_point, 0x3000, 0x303f)  NO
+        /// - is_hiragana = in_range(code_point, 0x3040, 0x309f)        YES
+        /// - is_katakana = in_range(code_point, 0x30a0, 0x30ff)        YES
+        /// - is_ideograph = in_range(code_point, 0x4e00, 0x9faf)       YES
+        /// 
+        /// - this function should also remove newlines etc.
+        /// </summary>
+        /// <param name="s"></param>
+        /// <returns></returns>
         public static string PrepareStringForDiff(string s)
         {
             StringBuilder sb = new StringBuilder(s.Length);
@@ -31,7 +39,15 @@ namespace SuiMerger
             return sb.ToString();
         }
 
-        //Note: this function may not work on files with greater than 1_000_000 lines
+
+        /// <summary>
+        /// This function calls `git diff` on the two input files - you need git installed
+        /// for it to work.
+        /// Note: this function may not work on files with greater than 1_000_000 lines
+        /// </summary>
+        /// <param name="inputPathA"></param>
+        /// <param name="inputPathB"></param>
+        /// <returns></returns>
         public static string RunDiffTool(string inputPathA, string inputPathB)
         {
             string command = "git";
@@ -49,6 +65,10 @@ namespace SuiMerger
             Process p = Process.Start(psi);
 
             //diff stderr->console, diff stdout->string
+            void GitDiffErrorDataReceived(object sender, DataReceivedEventArgs e)
+            {
+                Console.WriteLine($"Git Diff: {e.Data }\n");
+            }
             p.ErrorDataReceived += GitDiffErrorDataReceived;
             p.BeginErrorReadLine();
             string output = p.StandardOutput.ReadToEnd();
@@ -62,13 +82,13 @@ namespace SuiMerger
             return output;
         }
 
-        static void GitDiffErrorDataReceived(object sender, DataReceivedEventArgs e)
-        {
-            Console.WriteLine($"Git Diff: {e.Data }\n");
-        }
-
-        //NOTE: this function adds a newline to the end of each string.
-        static public void WriteListOfDialogueToFile(IEnumerable<DialogueBase> dialogues, string outputFileName, bool isPS3)
+        /// <summary>
+        /// This function writes out a list of dialogue, but performs preprocesses all the dialogue so it's nicely formatted for the diff
+        /// NOTE: this function adds a newline to the end of each string.
+        /// </summary>
+        /// <param name="dialogues"></param>
+        /// <param name="outputFileName"></param>
+        static public void WriteListOfDialogueToFile(IEnumerable<DialogueBase> dialogues, string outputFileName)
         {
             //write the diff-prepared manga gamer dialogue to a file
             using (StreamWriter sw = FileUtils.CreateDirectoriesAndOpen(outputFileName, FileMode.Create))
@@ -84,6 +104,13 @@ namespace SuiMerger
             }
         }
 
+        /// <summary>
+        /// This function is used in the re-matching process
+        /// TODO: this function should really be hidden as part of the re-matching process, not in this file.
+        /// </summary>
+        /// <param name="rematchedMGs"></param>
+        /// <param name="rematchedPS3s"></param>
+        /// <returns></returns>
         public static List<AlignmentPoint> GetAlignmentPointsFromMGPS3Array(List<MangaGamerDialogue> rematchedMGs, List<PS3DialogueFragment> rematchedPS3s)
         {
             List<AlignmentPoint> returnedAlignmentPoints = new List<AlignmentPoint>();
@@ -138,6 +165,12 @@ namespace SuiMerger
             return returnedAlignmentPoints;
         }
 
+        /// <summary>
+        /// After basic matching, some alignment points will still remain unmatched. This function takes
+        /// a single chunk of unmatched alignment points (not the whole list), and attempts to re-match them.
+        /// </summary>
+        /// <param name="unmatchedSequence"></param>
+        /// <returns></returns>
         public static List<AlignmentPoint> ReMatchUnmatchedDialogue(List<AlignmentPoint> unmatchedSequence)
         {
             //if empty list given, just return an empty list
@@ -230,10 +263,10 @@ namespace SuiMerger
             }
 
             //write the diff-prepared manga gamer dialogue to a file
-            WriteListOfDialogueToFile(mangaGamerDialogueList, mangaGamerDiffInputPath, isPS3: false);
+            WriteListOfDialogueToFile(mangaGamerDialogueList, mangaGamerDiffInputPath);
 
             //write the diff-prepared ps3 dialogue to a file
-            WriteListOfDialogueToFile(dummyPS3Instructions, PS3DiffInputPath, isPS3: true);
+            WriteListOfDialogueToFile(dummyPS3Instructions, PS3DiffInputPath);
 
             //do the diff
             string diffResult = RunDiffTool(mangaGamerDiffInputPath, PS3DiffInputPath);
@@ -256,7 +289,7 @@ namespace SuiMerger
                 }
 
                 //TODO: need to think of the best way to categorize all mangagamer lines...
-                //a ' ' means linesare the same
+                //a ' ' means lines are the same
                 //a '+' means line is present in PS3 ONLY           (it was 'added' in the ps3 version)
                 //a '-' means line is present in mangagamer ONLY    (it was 'removed' from the ps3 version)
                 List<AlignmentPoint> unmatchedSequence = new List<AlignmentPoint>();

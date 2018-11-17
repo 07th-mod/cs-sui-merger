@@ -12,7 +12,13 @@ namespace SuiMerger
     {
         static Regex fileNumberingRegex = new Regex(@".*?_(\d+?).xml", RegexOptions.IgnoreCase);
 
-        //merges files in alphabetical order
+        /// <summary>
+        /// This function merges all files in a folder `in order` (like using cat)
+        /// It assumes the files are of the form file1,file2,file3,...file9, file10, file11 etc.
+        /// It is OK if there is no `0` padding (will work even if files are not numbered as file0001 etc.)
+        /// </summary>
+        /// <param name="folder"></param>
+        /// <param name="outputFilePath"></param>
         public static void MergeFilesInFolder(string folder, string outputFilePath)
         {
             Dictionary<int, string> filePathDict = new Dictionary<int, string>();

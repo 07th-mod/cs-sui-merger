@@ -12,6 +12,9 @@ namespace SuiMerger
         static string hwk = "｢｣ｧｨｩｪｫｬｭｮｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜｦﾝｰｯ､ﾟﾞ･?｡";
         static string hira = "「」ぁぃぅぇぉゃゅょあいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわをんーっ、？！…　。";
 
+        /// <summary>
+        /// Convert a ps3 mangled string into proper hiragana
+        /// </summary>
         public static string TranslateString(string inputString)
         {
             string newline = inputString;

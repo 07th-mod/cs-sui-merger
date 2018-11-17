@@ -10,6 +10,10 @@ namespace SuiMerger
     {
         static bool debug;
 
+        /// <summary>
+        /// Allow toggling printing depending on the above 'debug' variable
+        /// </summary>
+        /// <param name="s"></param>
         public static void Print(string s)
         {
             if (debug)

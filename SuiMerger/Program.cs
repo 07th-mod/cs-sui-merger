@@ -16,72 +16,89 @@ using System.Xml;
 
 namespace SuiMerger
 {
-    class Chunker
-    {
-        DialogueBase startOfChunkString = new DialogueBase() { ID = -1, otherDialogue = null, data = ">>>> DIFF START" } ;
-        IEnumerator<DialogueBase> dialogueIter;
-
-        public Chunker(IEnumerator<DialogueBase> dialogueIter)
-        {
-            this.dialogueIter = dialogueIter;
-            dialogueIter.MoveNext();
-        }
-
-        //TODO: verify this function actually outputs all the data, and doesn't skip any data...
-        public List<string> GetCurrentChunk()
-        {
-            if (dialogueIter.Current == null)
-                return new List<string>();
-
-            List<string> mgCurrentChunk = new List<string>();
-            
-            while (dialogueIter.Current != null)
-            {
-                string headerMarker = "NULL";
-                if (startOfChunkString.otherDialogue != null)
-                    headerMarker = startOfChunkString.otherDialogue.ID.ToString();
-
-                mgCurrentChunk.Add($">>>> [{startOfChunkString.ID} -> {headerMarker}]: {startOfChunkString.data}");
-
-                DialogueBase currentDialogue = dialogueIter.Current;
-                startOfChunkString = currentDialogue; //this sets the start of chunk line for the NEXT chunk
-                mgCurrentChunk.AddRange(currentDialogue.previousLinesOrInstructions);
-                dialogueIter.MoveNext();
-
-                if (currentDialogue.otherDialogue != null)
-                {
-                    Console.WriteLine($"{currentDialogue.ID} -> {currentDialogue.otherDialogue.ID}");
-                    break;
-                }
-            }
-
-            return mgCurrentChunk;
-        }
-    }
 
     class Program
     {
-        static void WriteSideBySideTopPad(StreamWriter swA, StreamWriter swB, List<string> listA, List<string> listB)
+        #region DEBUG_PRINT_HELPER_FUNCTIONS
+
+        /// <summary>
+        /// functions used only for debug printing the diff, not the actually diff operation
+        /// </summary>
+        class DebugPrintDiff
         {
-            int maxLen = Math.Max(listA.Count, listB.Count);
-            int minLen = Math.Min(listA.Count, listB.Count);
-            string padString = new String(Config.newline, maxLen - minLen);
-
-            if (listA.Count < maxLen) //list A is smaller
+            static void WriteSideBySideTopPad(StreamWriter swA, StreamWriter swB, List<string> listA, List<string> listB)
             {
-                swA.Write(padString);
+                int maxLen = Math.Max(listA.Count, listB.Count);
+                int minLen = Math.Min(listA.Count, listB.Count);
+                string padString = new String(Config.newline, maxLen - minLen);
+
+                if (listA.Count < maxLen) //list A is smaller
+                {
+                    swA.Write(padString);
+                }
+
+                if (listB.Count < maxLen)
+                {
+                    swB.Write(padString);
+                }
+
+                StringUtils.WriteStringList(swA, listA);
+                StringUtils.WriteStringList(swB, listB);
             }
 
-            if (listB.Count < maxLen)
+            public static void PrintSideBySideDiff(List<AlignmentPoint> alignmentPoints, string debug_path_MG, string debug_path_PS3)
             {
-                swB.Write(padString);
-            }
+                using (StreamWriter swMG = FileUtils.CreateDirectoriesAndOpen(debug_path_MG, FileMode.Create))
+                {
+                    using (StreamWriter swPS3 = FileUtils.CreateDirectoriesAndOpen(debug_path_PS3, FileMode.Create))
+                    {
+                        //iterate through each dialogue in PS3 list
+                        List<string> currentPS3ToSave = new List<string>();
+                        List<string> currentMangaGamerToSave = new List<string>();
+                        foreach (AlignmentPoint alignmentPoint in alignmentPoints)
+                        {
+                            //add the previous lines (instructions
 
-            StringUtils.WriteStringList(swA, listA);
-            StringUtils.WriteStringList(swB, listB);
+                            if (alignmentPoint.ps3DialogFragment != null)
+                            {
+                                PS3DialogueFragment ps3 = alignmentPoint.ps3DialogFragment;
+                                currentPS3ToSave.AddRange(ps3.previousLinesOrInstructions);
+                                currentPS3ToSave.Add($">>>> [{ps3.ID}.{ps3.fragmentID} -> {(ps3.otherDialogue == null ? "NULL" : ps3.otherDialogue.ID.ToString())}]: {ps3.data}");
+                            }
+
+                            if (alignmentPoint.mangaGamerDialogue != null)
+                            {
+                                MangaGamerDialogue mg = alignmentPoint.mangaGamerDialogue;
+                                currentMangaGamerToSave.AddRange(mg.previousLinesOrInstructions);
+                                currentMangaGamerToSave.Add($">>>> [{mg.ID} -> {(mg.otherDialogue == null ? "NULL" : mg.otherDialogue.ID.ToString())}]: {mg.data}");
+                            }
+
+                            if (alignmentPoint.ps3DialogFragment != null && alignmentPoint.mangaGamerDialogue != null)
+                            {
+                                //Finally, top-pad the file with enough spaces so they line up (printing could be its own function)
+                                WriteSideBySideTopPad(swMG, swPS3, currentMangaGamerToSave, currentPS3ToSave);
+                                currentPS3ToSave.Clear();
+                                currentMangaGamerToSave.Clear();
+                            }
+                        }
+
+                        WriteSideBySideTopPad(swMG, swPS3, currentMangaGamerToSave, currentPS3ToSave);
+                        currentPS3ToSave.Clear();
+                        currentMangaGamerToSave.Clear();
+                    }
+                }
+            }
         }
 
-        //Returns a new list, filtered by the specified ranges
+        #endregion DEBUG_PRINT_HELPER_FUNCTIONS
+
+        /// <summary>
+        /// Given a list of PS3DialogueInstructions, returns a new list formed by the given "regions", filtered by PS3.ID
+        /// Eg, if regions is a list like [[1,3], [10,11]], it will return dialogues with PS3IDs = 1,2,3,10,11
+        /// </summary>
+        /// <param name="inputList"></param>
+        /// <param name="regions">INCLUSIVE list of PS3 ID regions to that the inputList should be filtered for</param>
+        /// <returns></returns>
         static List<PS3DialogueInstruction> GetFilteredPS3Instructions(List<PS3DialogueInstruction> inputList, List<List<int>> regions)
         {
             //assume that the whole list is to be scanned, if not specified.
@@ -105,49 +122,6 @@ namespace SuiMerger
             }
 
             return filteredList;
-        }
-
-        static void PrintSideBySideDiff(List<AlignmentPoint> alignmentPoints, string debug_path_MG, string debug_path_PS3)
-        {
-            using (StreamWriter swMG = FileUtils.CreateDirectoriesAndOpen(debug_path_MG, FileMode.Create))
-            {
-                using (StreamWriter swPS3 = FileUtils.CreateDirectoriesAndOpen(debug_path_PS3, FileMode.Create))
-                {
-                    //iterate through each dialogue in PS3 list
-                    List<string> currentPS3ToSave = new List<string>();
-                    List<string> currentMangaGamerToSave = new List<string>();
-                    foreach (AlignmentPoint alignmentPoint in alignmentPoints)
-                    {
-                        //add the previous lines (instructions
-
-                        if(alignmentPoint.ps3DialogFragment != null)
-                        {
-                            PS3DialogueFragment ps3 = alignmentPoint.ps3DialogFragment;
-                            currentPS3ToSave.AddRange(ps3.previousLinesOrInstructions);
-                            currentPS3ToSave.Add($">>>> [{ps3.ID}.{ps3.fragmentID} -> {(ps3.otherDialogue == null ? "NULL" : ps3.otherDialogue.ID.ToString())}]: {ps3.data}");
-                        }
-
-                        if(alignmentPoint.mangaGamerDialogue != null)
-                        {
-                            MangaGamerDialogue mg = alignmentPoint.mangaGamerDialogue;
-                            currentMangaGamerToSave.AddRange(mg.previousLinesOrInstructions);
-                            currentMangaGamerToSave.Add($">>>> [{mg.ID} -> {(mg.otherDialogue == null ? "NULL" : mg.otherDialogue.ID.ToString())}]: {mg.data}");
-                        }
-
-                        if (alignmentPoint.ps3DialogFragment != null && alignmentPoint.mangaGamerDialogue != null)
-                        {
-                            //Finally, top-pad the file with enough spaces so they line up (printing could be its own function)
-                            WriteSideBySideTopPad(swMG, swPS3, currentMangaGamerToSave, currentPS3ToSave);
-                            currentPS3ToSave.Clear();
-                            currentMangaGamerToSave.Clear();
-                        }                    
-                    }
-                    
-                    WriteSideBySideTopPad(swMG, swPS3, currentMangaGamerToSave, currentPS3ToSave);
-                    currentPS3ToSave.Clear();
-                    currentMangaGamerToSave.Clear();
-                }
-            }
         }
 
         static void SaveMergedMGScript(List<AlignmentPoint> alignmentPoints, string outputPath, List<string> mgLeftovers)
@@ -208,6 +182,15 @@ namespace SuiMerger
             StringUtils.WriteStringListRegion(swOut, currentMangaGamerToSave, currentMangaGamerToSave.Count - 1, currentMangaGamerToSave.Count);
         }
 
+        /// <summary>
+        /// After the alignment points are created, call this function to do some sanity checks against the original mangagamer and ps3 dialog fragments.
+        /// It checks that
+        ///     - the ordering of each list is maintained
+        ///     - all input dialogues are still present in the output
+        /// </summary>
+        /// <param name="alignmentPoints"></param>
+        /// <param name="allMangaGamerDialogue"></param>
+        /// <param name="fragments"></param>
         static void SanityCheckAlignmentPoints(List<AlignmentPoint> alignmentPoints, List<MangaGamerDialogue> allMangaGamerDialogue, List<PS3DialogueFragment> fragments)
         {
             //check all manga gamer ids present
@@ -245,18 +228,21 @@ namespace SuiMerger
             }
         }
 
-        static void PauseThenErrorExit()
-        {
-            Console.ReadLine();
-            Environment.Exit(-1);
-        }
-
+        /// <summary>
+        /// If you match the very small mangagamer script against the huge Sui script, the list of alignment points will
+        /// have a small amount of matching and the rest which won't match anything. This function performs a 
+        /// postprocessing step, which removes PS3 instructions at the start and end of the which don't match anything,
+        /// preventing an excessively large diff output.
+        /// </summary>
+        /// <param name="alignmentPoints"></param>
+        /// <returns></returns>
         static List<AlignmentPoint> TrimAlignmentPoints(List<AlignmentPoint> alignmentPoints)
         {
             //assume entire match region (incase triming can't be done found)
             int firstMatch = 0;
             int lastMatch = alignmentPoints.Count-1;
             
+            //remove non-matching PS3 alignmentpoints at the start of the file
             for(int i = 0; i < alignmentPoints.Count; i++)
             {
                 AlignmentPoint ap = alignmentPoints[i];
@@ -267,7 +253,8 @@ namespace SuiMerger
                 }
             }
 
-            for(int i = alignmentPoints.Count - 1; i > 0; i--)
+            //remove non-matching PS3 alignmentpoints at the end of the file
+            for (int i = alignmentPoints.Count - 1; i > 0; i--)
             {
                 AlignmentPoint ap = alignmentPoints[i];
                 if (ap.mangaGamerDialogue != null)
@@ -286,6 +273,13 @@ namespace SuiMerger
             return trimmedAlignmentPoints;
         }
 
+        /// <summary>
+        /// processes a single mangagamer script, attempting to merge the matching ps3 instructions
+        /// </summary>
+        /// <param name="pS3DialogueInstructionsPreFilter"></param>
+        /// <param name="config"></param>
+        /// <param name="mgInfo"></param>
+        /// <param name="guessedInputInfos"></param>
         static void ProcessSingleFile(List<PS3DialogueInstruction> pS3DialogueInstructionsPreFilter, MergerConfiguration config, InputInfo mgInfo, List<InputInfo> guessedInputInfos)
         {
             string fullPath = Path.Combine(config.input_folder, mgInfo.path);
@@ -296,7 +290,7 @@ namespace SuiMerger
 
             List<PS3DialogueInstruction> pS3DialogueInstructions = GetFilteredPS3Instructions(pS3DialogueInstructionsPreFilter, mgInfo.ps3_regions);           
 
-            //load all the mangagamer lines form the mangagamer file
+            //load all the mangagamer lines from the mangagamer file
             List<MangaGamerDialogue> allMangaGamerDialogue = MangaGamerScriptReader.GetDialogueLinesFromMangaGamerScript(fullPath, out List<string> mg_leftovers);
 
             //Diff the dialogue
@@ -309,7 +303,7 @@ namespace SuiMerger
             List<AlignmentPoint> alignmentPoints = config.trim_after_diff ? TrimAlignmentPoints(allAlignmentPoints) : allAlignmentPoints;
 
             //DEBUG: generate the side-by-side diff
-            PrintSideBySideDiff(alignmentPoints, debug_side_by_side_diff_path_MG, debug_side_by_side_diff_path_PS3);
+            DebugPrintDiff.PrintSideBySideDiff(alignmentPoints, debug_side_by_side_diff_path_MG, debug_side_by_side_diff_path_PS3);
 
             //Insert PS3 instructions
             string mergedOutputPath = Path.Combine(config.output_folder, pathNoExt + "_merged.txt");
@@ -399,6 +393,11 @@ namespace SuiMerger
             }
         }
 
+        /// <summary>
+        /// processes multiple mangagamer scripts and attempts to merge the ps3 instructions into them
+        /// </summary>
+        /// <param name="args"></param>
+        /// <returns></returns>
         static int Main(string[] args)
         {
             Console.WriteLine("If japanese characters show as ???? please change your console font to MS Gothic or similar.");
@@ -495,6 +494,12 @@ namespace SuiMerger
             Console.ReadLine();
 
             return 0;
+        }
+
+        static void PauseThenErrorExit()
+        {
+            Console.ReadLine();
+            Environment.Exit(-1);
         }
     }
 }

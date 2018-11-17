@@ -8,6 +8,12 @@ using System.Xml;
 
 namespace SuiMerger
 {
+    /// <summary>
+    /// This class helps in parsing a list of PS3 XML instructions from a System.IO.Stream
+    /// After opening the stream, call AdvanceToNextInstruction() to move to the next valid instruction
+    /// Then operate on the XmlReader `reader` as normal (use getAttribute and ReadOuterXML)
+    /// repeat until AdvanceToNextInstruction() returns false
+    /// </summary>
     public class PS3InstructionReader : IDisposable
     {
         public XmlReader reader;
@@ -77,9 +83,14 @@ namespace SuiMerger
         }
     }
 
-
+    /// <summary>
+    /// This class contains helper functions for reading a Sui PS3 instructions .XML file
+    /// </summary>
     public class PS3XMLReader
     {
+        /// <summary>
+        /// Read in a Sui PS3 instructions .XML file as a List of PS3DialogueInstructions
+        /// </summary>
         public static List<PS3DialogueInstruction> GetPS3DialoguesFromXML(string filePath)
         {
             using (FileStream fs = new FileStream(filePath, FileMode.Open))
