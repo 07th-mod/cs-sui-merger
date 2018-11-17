@@ -11,32 +11,61 @@ namespace SuiMerger
     public class Differ
     {
         /// <summary>
-        /// This function keeps only japanese characters in a string according to the following criteria:
+        /// This function keeps only japanese characters (and sometimes punctuation) in a string according to the following criteria:
         /// - keep only japanese characters
         /// - remove spaces
         ///
         ///   TYPE                                                      KEEP
-        /// - is_japanese_punct = in_range(code_point, 0x3000, 0x303f)  NO
+        /// - is_japanese_punct = in_range(code_point, 0x3000, 0x303f)  ONLY IF NO JAPANESE CHARACTERS ON LINE
         /// - is_hiragana = in_range(code_point, 0x3040, 0x309f)        YES
         /// - is_katakana = in_range(code_point, 0x30a0, 0x30ff)        YES
         /// - is_ideograph = in_range(code_point, 0x4e00, 0x9faf)       YES
         /// 
         /// - this function should also remove newlines etc.
+        /// 
+        /// Punctuation is ignored to improve matching, unless the line consists entirely of puncuation, in which case punctuation is preserved
         /// </summary>
         /// <param name="s"></param>
         /// <returns></returns>
         public static string PrepareStringForDiff(string s)
         {
-            StringBuilder sb = new StringBuilder(s.Length);
-            foreach (char c in s)
             {
-                if (StringUtils.CharIsJapanese(c))
+                StringBuilder sb = new StringBuilder(s.Length);
+                foreach (char c in s)
                 {
-                    sb.Append(c);
+                    if (StringUtils.CharIsJapaneseCharacter(c))
+                    {
+                        sb.Append(c);
+                    }
+                }
+
+                string japaneseCharactersOnlyString = sb.ToString();
+
+                if(Config.DIFF_IGNORE_JAPANESE_PUNCTUATION_ONLY_LINES)
+                {
+                    //return the line even if it is of length zero - line is probably
+                    //just japanese punctuation, or \n\n or some other formatting stuff
+                    return japaneseCharactersOnlyString;
+                }
+
+                if (japaneseCharactersOnlyString.Length > 0)
+                {
+                    return japaneseCharactersOnlyString;
                 }
             }
 
-            return sb.ToString();
+            //This section only executes if there are no japanese characters in the string
+            {
+                StringBuilder sb = new StringBuilder(s.Length);
+                foreach (char c in s)
+                {
+                    if (StringUtils.CharIsJapaneseCharacterOrPunctuationOrFullHalfWidth(c))
+                    {
+                        sb.Append(c);
+                    }
+                }
+                return sb.ToString();
+            }
         }
 
         /// <summary>

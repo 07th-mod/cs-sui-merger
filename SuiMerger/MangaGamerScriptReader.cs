@@ -19,10 +19,17 @@ namespace SuiMerger
             List<string> previousLines = new List<string>();
             foreach (string line in allLines)
             {
-                if (line.Contains("OutputLine") && Differ.PrepareStringForDiff(line).Length > 0)
+                if (line.Contains("OutputLine"))
                 {
-                    dialogues.Add(new MangaGamerDialogue(lineNumber, line, previousLines));
-                    previousLines.Clear();
+                    if (Differ.PrepareStringForDiff(line).Length > 0)
+                    {
+                        dialogues.Add(new MangaGamerDialogue(lineNumber, line, previousLines));
+                        previousLines.Clear();
+                    }
+                    else
+                    {
+                        Console.WriteLine($"WARNING: MG dialogue has no japanese characters - it won't be used for matching: [{line}]");
+                    }
                 }
                 else
                 {

@@ -9,5 +9,8 @@ namespace SuiMerger
     class Config
     {
         public static char newline = '\n';
+
+        //enable to ignore any lines which consist only of japanese punctuation when performing diff operations
+        public static bool DIFF_IGNORE_JAPANESE_PUNCTUATION_ONLY_LINES = false;
     }
 }

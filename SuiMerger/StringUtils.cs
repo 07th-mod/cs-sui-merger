@@ -9,9 +9,20 @@ namespace SuiMerger
 {
     public class StringUtils
     {
-        public static bool CharIsJapanese(char c)
+        //see https://www.unicode.org/charts/PDF/UFF00.pdf for full/half width ranges
+        //see http://www.unicode.org/charts/PDF/U2000.pdf for punctuation ranges
+        public static bool CharIsJapaneseCharacterOrPunctuationOrFullHalfWidth(char c)
         {
-            int c_codepoint = (int)c; //NOTE: doesn't work for >16 bit codepoints (> 0xFFFF)
+            int c_codepoint = c; //NOTE: doesn't work for >16 bit codepoints (> 0xFFFF)
+            bool is_japanese_character_or_punctuation = c_codepoint >= 0x3000 && c_codepoint <= 0x9faf;
+            bool is_full_or_half_width = c_codepoint >= 0xFF01 && c_codepoint <= 0xFFEE;
+            bool is_general_punctuation = c_codepoint >= 0x2000 && c_codepoint <= 0x206F;
+            return is_japanese_character_or_punctuation || is_full_or_half_width || is_general_punctuation;
+        }
+
+        public static bool CharIsJapaneseCharacter(char c)
+        {
+            int c_codepoint = c; //NOTE: doesn't work for >16 bit codepoints (> 0xFFFF)
             return c_codepoint >= 0x3040 && c_codepoint <= 0x9faf;
         }
 
