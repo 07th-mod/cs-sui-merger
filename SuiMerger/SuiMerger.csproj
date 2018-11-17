@@ -85,6 +85,7 @@
   <ItemGroup>
     <Compile Include="Config.cs" />
     <Compile Include="DebugUtils.cs" />
+    <Compile Include="DialogueReMatcher.cs" />
     <Compile Include="Differ.cs" />
     <Compile Include="FileConcatenator.cs" />
     <Compile Include="FileTranslator.cs" />
