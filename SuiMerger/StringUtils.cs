@@ -32,7 +32,7 @@ namespace SuiMerger
             return c_codepoint <= 0xFF;
         }
 
-        public static void WriteStringList(StreamWriter sw, IEnumerable<string> strings)
+        public static void WriteStringList(TextWriter sw, IEnumerable<string> strings)
         {
             foreach (string s in strings)
             {
