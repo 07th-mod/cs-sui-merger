@@ -568,14 +568,14 @@ namespace SuiMerger
             }
             
             Console.WriteLine("\n\nProgram Finished!");
-            Console.ReadLine();
+            Console.ReadKey();
 
             return 0;
         }
 
         static void PauseThenErrorExit()
         {
-            Console.ReadLine();
+            Console.ReadKey();
             Environment.Exit(-1);
         }
     }
