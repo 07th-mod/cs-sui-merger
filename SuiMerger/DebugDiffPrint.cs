@@ -114,14 +114,14 @@ namespace SuiMerger
                 {
                     PS3DialogueFragment ps3 = alignmentPoint.ps3DialogFragment;
                     currentPS3ToSave.AddRange(ps3.previousLinesOrInstructions);
-                    currentPS3ToSave.Add($">>>> [{ps3.ID}.{ps3.fragmentID} -> {(ps3.otherDialogue == null ? "NULL" : ps3.otherDialogue.ID.ToString())}]: {ps3.data}");
+                    currentPS3ToSave.Add($">>>> [{ps3.ID}.{ps3.fragmentID} -> {(ps3.otherDialogue == null ? "NoMatch" : ps3.otherDialogue.ID.ToString())}]: {ps3.data}");
                 }
 
                 if (alignmentPoint.mangaGamerDialogue != null)
                 {
                     MangaGamerDialogue mg = alignmentPoint.mangaGamerDialogue;
                     currentMangaGamerToSave.AddRange(mg.previousLinesOrInstructions);
-                    currentMangaGamerToSave.Add($">>>> [{mg.ID} -> {(mg.otherDialogue == null ? "NULL" : mg.otherDialogue.ID.ToString())}]: {mg.data}");
+                    currentMangaGamerToSave.Add($">>>> [{mg.ID} -> {(mg.otherDialogue == null ? "NoMatch" : mg.otherDialogue.ID.ToString())}]: {mg.data}");
                 }
 
                 if (alignmentPoint.ps3DialogFragment != null && alignmentPoint.mangaGamerDialogue != null)
