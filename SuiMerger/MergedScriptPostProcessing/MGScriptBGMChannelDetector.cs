@@ -114,7 +114,7 @@ namespace SuiMerger.MergedScriptPostProcessing
                 }
                 catch (Exception e)
                 {
-
+                    Console.WriteLine($"ERROR: Couldn't open BGM folder [{searchFolder}]. BGM Folder Detection might not work correctly!");
                 }
             }
 
