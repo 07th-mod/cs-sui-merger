@@ -89,6 +89,24 @@ namespace SuiMerger
         }
     }
 
+    /// <summary>
+    /// The output from the main SuiMerger produces a text file which is the original
+    /// MG script but with the relevant PS3 Instructions merged into it. 
+    /// 
+    /// This class consumes lines from the merged script file one line at a time. Once it
+    /// has consumed enough lines to form a ps3 instructions chunk, it returns the entire chunk
+    /// all at once. Otherwise, it returns null.
+    /// 
+    /// Example
+    /// 
+    /// asdfasdfasdfsfd
+    /// asdfasdasdf
+    /// <?xml version="1.0" encoding="UTF-8"?>
+    /// <PS3_SECTION>  <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~START~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+    /// <ins type="MIX_CHANNEL_FADE" duration="60"></ins>
+    /// </PS3_SECTION> <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~END~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->      //only here will the chunk be returned
+    /// 
+    /// </summary>
     class PS3XMLChunkFinder
     {
         static Regex ps3Start = new Regex(@"<?xml", RegexOptions.IgnoreCase);
@@ -104,6 +122,8 @@ namespace SuiMerger
             {
                 sb.Append(line + Config.newline);
 
+                //found ps3 section terminator - leave ps3 section. 
+                //return all the ps3 instructions for this chunk as a string
                 if (ps3End.IsMatch(line))
                 {
                     insidePS3XML = false;
@@ -114,6 +134,7 @@ namespace SuiMerger
             }
             else
             {
+                //found a ps3 line - have entered a ps3 instructions section
                 lastLineWasXML = ps3Start.IsMatch(line);
                 if (lastLineWasXML)
                 {
@@ -190,7 +211,14 @@ namespace SuiMerger
             return null;
         }
 
-        public static bool LineHasPlayBGMOnChannel(string line, int channel)
+        /// <summary>
+        /// Checks if a line of the MangaGamer script has a PlayBGM command on a given channel 
+        /// like PlayBGM(5, "audio");
+        /// </summary>
+        /// <param name="line"></param>
+        /// <param name="channel"></param>
+        /// <returns></returns>
+        private static bool LineHasPlayBGMOnChannel(string line, int channel)
         {
             Match match = playBGMMusicRegex.Match(line);
             if (!match.Success)
@@ -199,7 +227,15 @@ namespace SuiMerger
             return int.Parse(match.Groups[1].Value) == channel;
         }
 
-        public static bool LineHasFadeOutBGMOnChannel(string line, int channel)
+        /// <summary>
+        /// Checks if a line of the MangaGamer script has a FadeOutBGM command on a given channel 
+        /// like FadeBGM(5, 3000);
+        /// The regex doesn't check for a full match, just "FadeBGM([number]"
+        /// </summary>
+        /// <param name="line"></param>
+        /// <param name="channel"></param>
+        /// <returns></returns>
+        private static bool LineHasFadeOutBGMOnChannel(string line, int channel)
         {
             Match match = fadeOutBGMMusicRegex.Match(line);
             if (!match.Success)
@@ -288,7 +324,16 @@ namespace SuiMerger
             }
         }
 
-        public static int? DetectBGMChannel(string mgScriptPath, MergerConfiguration configuration)
+        /// <summary>
+        /// Given an original manga gamer script file, attempts to detect which channel is used for BGM
+        /// As input it needs to know the filenames of the BGM music files.
+        /// It obtains this from the MergerConfiguration argument (the .toml file)
+        /// It also uses the bgm length threshold to determine the difference between a BGM and a sound effect.
+        /// </summary>
+        /// <param name="mgScriptPath"></param>
+        /// <param name="configuration"></param>
+        /// <returns></returns>
+        private static int? DetectBGMChannel(string mgScriptPath, MergerConfiguration configuration)
         {
             Dictionary<int, int> channelCounter = new Dictionary<int, int>();
 
