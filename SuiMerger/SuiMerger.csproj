@@ -94,13 +94,16 @@
     <Compile Include="HintParser.cs" />
     <Compile Include="InOrderLevenshteinMatcher.cs" />
     <Compile Include="MangaGamerScriptReader.cs" />
+    <Compile Include="MergedScriptPostProcessing\MangaGamerInstructionObjects.cs" />
+    <Compile Include="MergedScriptPostProcessing\MGScriptBGMChannelDetector.cs" />
+    <Compile Include="MergedScriptPostProcessing\PS3XMLChunkFinder.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="DialogueClasses.cs" />
     <Compile Include="PS3DialogueTools.cs" />
     <Compile Include="PS3XMLReader.cs" />
     <Compile Include="StringUtils.cs" />
-    <Compile Include="UseInformation.cs" />
+    <Compile Include="MergedScriptPostProcessing\PostProcessingMain.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

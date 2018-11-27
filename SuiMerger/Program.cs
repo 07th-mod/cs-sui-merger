@@ -238,7 +238,7 @@ namespace SuiMerger
             SaveMergedMGScript(alignmentPoints, mergedOutputPath, mg_leftovers);
 
             //Use the inserted instructions
-            UseInformation.InsertMGLinesUsingPS3XML(mergedOutputPath, Path.Combine(config.output_folder, pathNoExt + "_bgm.txt"), config);
+            MergedScriptPostProcessing.PostProcessingMain.InsertMGLinesUsingPS3XML(mergedOutputPath, Path.Combine(config.output_folder, pathNoExt + "_bgm.txt"), config);
 
             //Printout guessed ps3 region if region not specified in config file
             if(mgInfo.ps3_regions.Count == 0)
