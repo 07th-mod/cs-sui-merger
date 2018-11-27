@@ -18,60 +18,59 @@ namespace SuiMerger.MergedScriptPostProcessing
 
         public static void InsertMGLinesUsingPS3XML(string mergedMGScriptPath, string outputPath, MergerConfiguration configuration)
         {
-            Console.WriteLine($"--------- Begin Applying Postprocessing to {mergedMGScriptPath} ------");
+            Console.WriteLine($"--------- Begin Applying Postprocessing Stage 1 to {mergedMGScriptPath} ------");
 
-
-            Console.WriteLine("--------- Begin inserting BGM into original script ------");
+            //Detect the BGM channel of the original Manga Gamer script. This is used for BGM insertion and FadeOut insertion
             int bgmChannelNumber = MGScriptBGMChannelDetector.DetectBGMChannelOrDefault(mergedMGScriptPath, configuration, defaultChannel: 2, PrintOnFoundChannelAndWarnings: true);
 
-            List<MangaGamerInstruction> linesToOutput = new List<MangaGamerInstruction>();
-            using (StreamReader mgScript = new StreamReader(mergedMGScriptPath, Encoding.UTF8))
+
+            // --------- Perform stage 1 - this converts the raw merged script into a list of MangaGamerInstructions --------- 
+            //Iterate over the the Manga Gamer chunks and the PS3 XML Instructions Chunks of the merged script
+            List<MangaGamerInstruction> outputStage1 = new List<MangaGamerInstruction>();
+            foreach (var chunk in PS3XMLChunkFinder.GetAllChunksFromMergedScript(mergedMGScriptPath))
             {
-                PS3XMLChunkFinder chunkFinder = new PS3XMLChunkFinder();
-                string mgScriptLine;
-                while ((mgScriptLine = mgScript.ReadLine()) != null)
+                if(chunk.isPS3Chunk)
                 {
-                    //TODO: handle commented lines here?
-
-                    //Handle XML data if there is any by inserting instructions into output script
-                    string ps3Chunk = chunkFinder.Update(mgScriptLine);
-                    if (ps3Chunk != null)
-                    {
-                        HandlePS3Chunk(ps3Chunk, linesToOutput, bgmChannelNumber);
-                    }
-
-                    //Handle original mg lines here
-                    if(!chunkFinder.LastLineWasXML())
+                    //PS3 XML reader doesn't care about newlines, so just join each line directly to next line
+                    HandlePS3Chunk(String.Join("", chunk.lines), outputStage1, bgmChannelNumber);
+                }
+                else
+                {
+                    //handle a mangagamer chunk
+                    foreach (string mgScriptLine in chunk.lines)
                     {
                         //add a fadebgm before last line of the script
                         if (mgScriptLine.Trim() == "}")
                         {
-                            linesToOutput.Add(new GenericInstruction("\tFadeOutBGM(0,1000,FALSE);", false));
+                            outputStage1.Add(new GenericInstruction("\tFadeOutBGM(0,1000,FALSE);", false));
                         }
 
-                        linesToOutput.Add(new GenericInstruction(mgScriptLine, false));
+                        outputStage1.Add(new GenericInstruction(mgScriptLine, false));
                     }
                 }
             }
 
-            //filter, then write lines to output to file
-            using (StreamWriter outputFile = FileUtils.CreateDirectoriesAndOpen(outputPath, FileMode.Create))
+            // --------- Perform stage 2 filtering to 'tidy up' the script ---------
+            //This section runs filters after all the other filters have run.
+            //This stage converts the list of MangaGamerInstructions to a list of strings 
+            List<string> outputStage2 = new List<string>();
+            foreach (MangaGamerInstruction inst in outputStage1)
             {
-                foreach(MangaGamerInstruction inst in linesToOutput)
+                //clear out any Music (channel 2) BGM or Fade lines from the original manga gamer script
+                bool lineIsPlayBGMOrFadeBGM =
+                    LineHasPlayBGMOnChannel(inst.GetInstructionForScript(), bgmChannelNumber) ||
+                    LineHasFadeOutBGMOnChannel(inst.GetInstructionForScript(), bgmChannelNumber);
+
+                if (lineIsPlayBGMOrFadeBGM && inst.IsPS3() == false)
                 {
-                    //clear out any Music (channel 2) BGM or Fade lines from the original manga gamer script
-                    bool lineIsPlayBGMOrFadeBGM = 
-                        LineHasPlayBGMOnChannel(inst.GetInstructionForScript(), bgmChannelNumber) ||
-                        LineHasFadeOutBGMOnChannel(inst.GetInstructionForScript(), bgmChannelNumber);
-
-                    if (lineIsPlayBGMOrFadeBGM && inst.IsPS3() == false)
-                    {
-                        continue;
-                    }
-
-                    outputFile.WriteLine(inst.GetInstructionForScript());
+                    continue;
                 }
+
+                outputStage2.Add(inst.GetInstructionForScript());
             }
+
+            // --------- Finally, write the output to file. ---------
+            FileUtils.WriteAllLinesCustomNewline(outputPath, outputStage2);
         }
 
         //Some files use different BGM channels for music (as opposed to background sounds). Another

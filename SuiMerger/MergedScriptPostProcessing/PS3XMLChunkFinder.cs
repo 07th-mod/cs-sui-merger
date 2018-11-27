@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -30,41 +31,86 @@ namespace SuiMerger.MergedScriptPostProcessing
         static Regex ps3Start = new Regex(@"<?xml", RegexOptions.IgnoreCase);
         static Regex ps3End = new Regex(@"</PS3_SECTION", RegexOptions.IgnoreCase);
 
-        bool lastLineWasXML = false;
-        bool insidePS3XML = false;
-        StringBuilder sb = new StringBuilder();
-
-        public string Update(string line)
+        /// <summary>
+        /// The function takes the path to a merged MG/PS3 Script file
+        /// As output it produces the chunks MG / PS3 chunks of the script in the order they appear in the script.
+        /// The chunks are returned as a list of Chunk objects which indicate themselves whether they are a MG or a PS3 type chunk.
+        /// The output lines do not contain line endings.
+        /// </summary>
+        /// <param name="mergedMGScriptPath"></param>
+        /// <returns></returns>
+        public static List<Chunk> GetAllChunksFromMergedScript(string mergedMGScriptPath)
         {
-            if (insidePS3XML)
+            //initialize the chunk list with one chunk, which is assumed to be MG type chunk
+            List<Chunk> chunks = new List<Chunk>
             {
-                sb.Append(line + Config.newline);
+                new Chunk(isPS3Chunk: false)
+            };
 
-                //found ps3 section terminator - leave ps3 section. 
-                //return all the ps3 instructions for this chunk as a string
-                if (ps3End.IsMatch(line))
-                {
-                    insidePS3XML = false;
-                    string retString = sb.ToString();
-                    sb.Clear();
-                    return retString;
-                }
-            }
-            else
+            //define a local function which returns the last chunk
+            Chunk lastChunk() => chunks[chunks.Count - 1];
+
+            using (StreamReader mgScript = new StreamReader(mergedMGScriptPath, Encoding.UTF8))
             {
-                //found a ps3 line - have entered a ps3 instructions section
-                lastLineWasXML = ps3Start.IsMatch(line);
-                if (lastLineWasXML)
+                string mergedScriptLine;
+                while ((mergedScriptLine = mgScript.ReadLine()) != null)
                 {
-                    sb.Append(line + Config.newline);
-                    insidePS3XML = true;
-                }
-            }
+                    //if you're not in a ps3 chunk:
+                    //  enter ps3 chunk if you see the ps3 chunk start marker
+                    //must do this before current line is added to chunk to include start marker in chunk
+                    if (!lastChunk().isPS3Chunk && ps3Start.IsMatch(mergedScriptLine))
+                    {
+                        chunks.Add(new Chunk(isPS3Chunk: true));
+                    }
 
-            return null;
+                    //add the current line to the current chunk (the last chunk on the list)
+                    lastChunk().lines.Add(mergedScriptLine);
+
+                    //if you are in a ps3 chunk:
+                    //  exit from ps3 chunk if you see the ps3 chunk end marker
+                    //must do this after current line is added to chunk to include end marker in chunk
+                    if (lastChunk().isPS3Chunk && ps3End.IsMatch(mergedScriptLine))
+                    {
+                        chunks.Add(new Chunk(isPS3Chunk: false));
+                    }
+                }
+
+                return chunks;
+            }
         }
 
-        public bool LastLineWasXML() => lastLineWasXML;
+        /// <summary>
+        /// Represents a single MangaGamer or PS3 chunk in the merged script, 
+        /// Consists of multiple lines, and a tag indicating the type of chunk (MG or PS3) 
+        /// </summary>
+        public class Chunk
+        {
+            public List<string> lines;
+            public bool isPS3Chunk;
+
+            public Chunk(bool isPS3Chunk)
+            {
+                lines = new List<string>();
+                this.isPS3Chunk = isPS3Chunk;
+            }
+
+            /// <summary>
+            /// For debugging - print the contents and type of the chunk
+            /// </summary>
+            /// <returns></returns>
+            public override string ToString()
+            {
+                StringBuilder sb = new StringBuilder();
+                sb.AppendLine($"Begin {(isPS3Chunk ? "PS3" : "MangaGamer")} Chunk:");
+
+                foreach (var line in lines)
+                {
+                    sb.AppendLine(line);
+                }
+
+                return sb.ToString();
+            }
+        }
     }
 
 }
