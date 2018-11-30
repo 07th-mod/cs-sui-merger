@@ -202,6 +202,51 @@ namespace SuiMerger
             return trimmedAlignmentPoints;
         }
 
+        static void WriteAlignmentStatistics(List<AlignmentPoint> alignmentPoints, string outputPath)
+        {
+            int unalignedMG = 0;
+            int unalignedPS3 = 0;
+            List<AlignmentPoint> unalignedPoints = new List<AlignmentPoint>();
+
+            foreach (var alignmentPoint in alignmentPoints)
+            {
+                //MG has missing PS3
+                if(alignmentPoint.ps3DialogFragment == null)
+                {
+                    unalignedPoints.Add(alignmentPoint);
+                    unalignedMG++;
+                }
+
+                //PS3 has missing MG
+                if(alignmentPoint.mangaGamerDialogue == null)
+                {
+                    unalignedPoints.Add(alignmentPoint);
+                    unalignedPS3++;
+                }
+            }
+
+            StringBuilder reportSB = new StringBuilder();
+
+            reportSB.AppendLine("See [INPUT_SCRIPT_NAME]_side_by_side_debug.html for detailed diff information.");
+            reportSB.AppendLine($"Num unaligned MG: {unalignedMG} percent: {(double)unalignedMG / alignmentPoints.Count * 100}");
+            reportSB.AppendLine($"Num unaligned PS3: {unalignedPS3} percent: {(double)unalignedPS3 / alignmentPoints.Count * 100}");
+            reportSB.AppendLine($"Unaligned Entries Follow....");
+            reportSB.AppendLine("---------------------------------------------------------------------------------\n");
+            foreach (var alignmentPoint in unalignedPoints)
+            {
+                if (alignmentPoint.mangaGamerDialogue != null)
+                {
+                    reportSB.AppendLine($"MG  [{alignmentPoint.mangaGamerDialogue.ID,7}]: {alignmentPoint.mangaGamerDialogue.data}");
+                }
+                if (alignmentPoint.ps3DialogFragment != null)
+                { 
+                    reportSB.AppendLine($"PS3 [{alignmentPoint.ps3DialogFragment.ID,7}]: {alignmentPoint.ps3DialogFragment.data}");
+                }
+            }
+
+            File.WriteAllText(outputPath, reportSB.ToString());
+        }
+
         /// <summary>
         /// processes a single mangagamer script, attempting to merge the matching ps3 instructions
         /// </summary>
@@ -214,7 +259,8 @@ namespace SuiMerger
             string fullPath = Path.Combine(config.input_folder, mgInfo.path);
             string pathNoExt = Path.GetFileNameWithoutExtension(fullPath);
 
-            string debug_side_by_side_diff_path_MG  = Path.Combine(config.temp_folder, pathNoExt + "side_by_side_debug.html");
+            string debug_side_by_side_diff_path_MG  = Path.Combine(config.temp_folder, pathNoExt + "_side_by_side_debug.html");
+            string debug_alignment_statistics = Path.Combine(config.temp_folder, pathNoExt + "_statistics.txt");
 
             List<PS3DialogueInstruction> pS3DialogueInstructions = GetFilteredPS3Instructions(pS3DialogueInstructionsPreFilter, mgInfo.ps3_regions);           
 
@@ -229,6 +275,9 @@ namespace SuiMerger
 
             //trim alignment points to reduce output
             List<AlignmentPoint> alignmentPoints = config.trim_after_diff ? TrimAlignmentPoints(allAlignmentPoints) : allAlignmentPoints;
+
+            //Write statistics on how well matched the alignment points are
+            WriteAlignmentStatistics(alignmentPoints, debug_alignment_statistics);
 
             //DEBUG: generate the side-by-side diff
             DifferDebugUtilities.PrintHTMLSideBySideDiff(alignmentPoints, debug_side_by_side_diff_path_MG);
