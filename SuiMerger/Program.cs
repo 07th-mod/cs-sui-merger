@@ -365,12 +365,8 @@ namespace SuiMerger
             }
         }
 
-        /// <summary>
-        /// processes multiple mangagamer scripts and attempts to merge the ps3 instructions into them
-        /// </summary>
-        /// <param name="args"></param>
-        /// <returns></returns>
-        static int Main(string[] args)
+        //wrapper to allow 'pausing' of program but still garbage collect everything to force files to write-out
+        static void RunProgram()
         {
             Console.WriteLine("If japanese characters show as ???? please change your console font to MS Gothic or similar.");
 
@@ -396,7 +392,7 @@ namespace SuiMerger
             {
                 untranslatedXMLFilePath = config.ps3_xml_path;
             }
-            else if(Directory.Exists(config.ps3_xml_path))
+            else if (Directory.Exists(config.ps3_xml_path))
             {
                 FileConcatenator.MergeFilesInFolder(config.ps3_xml_path, config.ps3_merged_output_path);
                 untranslatedXMLFilePath = config.ps3_merged_output_path;
@@ -414,7 +410,7 @@ namespace SuiMerger
             //ProcessSingleFile should then attempt to find the correct regions for those files and dump to toml file
             //TODO: clean up console output
             HashSet<string> filePathsToGetStartEnd = new HashSet<string>(); //note: this path includes the input folder name eg "input/test.txt"
-            foreach(string fileInInputFolder in Directory.EnumerateFiles(config.input_folder, "*.*", SearchOption.AllDirectories))
+            foreach (string fileInInputFolder in Directory.EnumerateFiles(config.input_folder, "*.*", SearchOption.AllDirectories))
             {
                 filePathsToGetStartEnd.Add(Path.GetFullPath(fileInInputFolder));
             }
@@ -422,13 +418,13 @@ namespace SuiMerger
             foreach (InputInfo inputInfo in config.input)
             {
                 string tomlInputFilePathNormalized = Path.GetFullPath(Path.Combine(config.input_folder, inputInfo.path));
-                
+
                 if (filePathsToGetStartEnd.Contains(tomlInputFilePathNormalized))
                 {
                     Console.WriteLine($"\n[  TOML OK   ]: {tomlInputFilePathNormalized} found in config file with region {StringUtils.PrettyPrintListOfListToString(inputInfo.ps3_regions)}");
                     filePathsToGetStartEnd.Remove(tomlInputFilePathNormalized);
                     ProcessSingleFile(pS3DialogueInstructionsPreFilter, config, inputInfo, new List<InputInfo>());
-                }       
+                }
             }
 
             //Save to a file so it can be copied into toml file (if already correct)
@@ -461,6 +457,17 @@ namespace SuiMerger
                     guessedInputInfos.Clear();
                 }
             }
+
+        }
+
+        /// <summary>
+        /// processes multiple mangagamer scripts and attempts to merge the ps3 instructions into them
+        /// </summary>
+        /// <param name="args"></param>
+        /// <returns></returns>
+        static int Main(string[] args)
+        {
+            RunProgram();
             
             Console.WriteLine("\n\nProgram Finished!");
             Console.ReadKey();
