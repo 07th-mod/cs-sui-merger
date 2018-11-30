@@ -202,46 +202,41 @@ namespace SuiMerger
             return trimmedAlignmentPoints;
         }
 
+        //Write statisics on which lines were not matched 
         static void WriteAlignmentStatistics(List<AlignmentPoint> alignmentPoints, string outputPath)
         {
-            int unalignedMG = 0;
-            int unalignedPS3 = 0;
-            List<AlignmentPoint> unalignedPoints = new List<AlignmentPoint>();
-
-            foreach (var alignmentPoint in alignmentPoints)
-            {
-                //MG has missing PS3
-                if(alignmentPoint.ps3DialogFragment == null)
-                {
-                    unalignedPoints.Add(alignmentPoint);
-                    unalignedMG++;
-                }
-
-                //PS3 has missing MG
-                if(alignmentPoint.mangaGamerDialogue == null)
-                {
-                    unalignedPoints.Add(alignmentPoint);
-                    unalignedPS3++;
-                }
-            }
+            List<AlignmentPoint> unalignedPoints = alignmentPoints.Where(alignmentPoint => alignmentPoint.mangaGamerDialogue == null || alignmentPoint.ps3DialogFragment == null).ToList();
+            List<AlignmentPoint> unalignedMGPoints = unalignedPoints.Where(alignmentPoint => alignmentPoint.ps3DialogFragment == null).ToList();
+            List<AlignmentPoint> unalignedPS3Points = unalignedPoints.Where(alignmentPoint => alignmentPoint.mangaGamerDialogue == null).ToList();
 
             StringBuilder reportSB = new StringBuilder();
 
             reportSB.AppendLine("See [INPUT_SCRIPT_NAME]_side_by_side_debug.html for detailed diff information.");
-            reportSB.AppendLine($"Num unaligned MG: {unalignedMG} percent: {(double)unalignedMG / alignmentPoints.Count * 100}");
-            reportSB.AppendLine($"Num unaligned PS3: {unalignedPS3} percent: {(double)unalignedPS3 / alignmentPoints.Count * 100}");
+            reportSB.AppendLine($"Num unaligned MG: {unalignedMGPoints.Count} percent: {(double)unalignedMGPoints.Count / alignmentPoints.Count * 100}");
+            reportSB.AppendLine($"Num unaligned PS3: {unalignedPS3Points.Count} percent: {(double)unalignedPS3Points.Count / alignmentPoints.Count * 100}");
             reportSB.AppendLine($"Unaligned Entries Follow....");
             reportSB.AppendLine("---------------------------------------------------------------------------------\n");
+
             foreach (var alignmentPoint in unalignedPoints)
             {
-                if (alignmentPoint.mangaGamerDialogue != null)
+                bool isMangaGamerDialogue = alignmentPoint.mangaGamerDialogue != null;
+                string alignmentPointType = isMangaGamerDialogue ? "MG " : "PS3";
+                DialogueBase dialogueToPrint = isMangaGamerDialogue ? (DialogueBase)alignmentPoint.mangaGamerDialogue : (DialogueBase)alignmentPoint.ps3DialogFragment;
+                string IDString = dialogueToPrint.ID.ToString();
+
+                if(!isMangaGamerDialogue)
                 {
-                    reportSB.AppendLine($"MG  [{alignmentPoint.mangaGamerDialogue.ID,7}]: {alignmentPoint.mangaGamerDialogue.data}");
-                }
-                if (alignmentPoint.ps3DialogFragment != null)
-                { 
-                    reportSB.AppendLine($"PS3 [{alignmentPoint.ps3DialogFragment.ID,7}]: {alignmentPoint.ps3DialogFragment.data}");
-                }
+                    //Format ID string differently for PS3 because it has a fragment ID
+                    IDString = $"{alignmentPoint.ps3DialogFragment.ID}.{alignmentPoint.ps3DialogFragment.fragmentID}";
+
+                    //Only for PS3: print out any previous XML instructions
+                    foreach (var previousLineOrInstruction in dialogueToPrint.previousLinesOrInstructions)
+                    {
+                        reportSB.AppendLine($"\t\t|------: {previousLineOrInstruction} ({alignmentPointType} [{IDString,7}])");
+                    }
+                }                
+
+                reportSB.AppendLine($"{alignmentPointType} [{IDString,8}]: {dialogueToPrint.data}");
             }
 
             File.WriteAllText(outputPath, reportSB.ToString());
