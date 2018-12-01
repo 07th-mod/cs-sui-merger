@@ -212,8 +212,8 @@ namespace SuiMerger
             StringBuilder reportSB = new StringBuilder();
 
             reportSB.AppendLine("See [INPUT_SCRIPT_NAME]_side_by_side_debug.html for detailed diff information.");
-            reportSB.AppendLine($"Num unaligned MG: {unalignedMGPoints.Count} percent: {(double)unalignedMGPoints.Count / alignmentPoints.Count * 100}");
-            reportSB.AppendLine($"Num unaligned PS3: {unalignedPS3Points.Count} percent: {(double)unalignedPS3Points.Count / alignmentPoints.Count * 100}");
+            reportSB.AppendLine($"Num unaligned MG : {unalignedMGPoints.Count ,10} instructions ({(double)unalignedMGPoints.Count  / alignmentPoints.Count:P})");
+            reportSB.AppendLine($"Num unaligned PS3: {unalignedPS3Points.Count,10} instructions ({(double)unalignedPS3Points.Count / alignmentPoints.Count:P})");
             reportSB.AppendLine($"Unaligned Entries Follow....");
             reportSB.AppendLine("---------------------------------------------------------------------------------\n");
 
@@ -254,8 +254,8 @@ namespace SuiMerger
             string fullPath = Path.Combine(config.input_folder, mgInfo.path);
             string pathNoExt = Path.GetFileNameWithoutExtension(fullPath);
 
-            string debug_side_by_side_diff_path_MG  = Path.Combine(config.temp_folder, pathNoExt + "_side_by_side_debug.html");
-            string debug_alignment_statistics = Path.Combine(config.temp_folder, pathNoExt + "_statistics.txt");
+            string debug_side_by_side_diff_path_MG  = Path.Combine(config.output_folder, pathNoExt + "_side_by_side_debug.html");
+            string debug_alignment_statistics = Path.Combine(config.output_folder, pathNoExt + "_statistics_debug.txt");
 
             List<PS3DialogueInstruction> pS3DialogueInstructions = GetFilteredPS3Instructions(pS3DialogueInstructionsPreFilter, mgInfo.ps3_regions);           
 
@@ -278,11 +278,11 @@ namespace SuiMerger
             DifferDebugUtilities.PrintHTMLSideBySideDiff(alignmentPoints, debug_side_by_side_diff_path_MG);
 
             //Insert PS3 instructions
-            string mergedOutputPath = Path.Combine(config.output_folder, pathNoExt + "_merged.txt");
+            string mergedOutputPath = Path.Combine(config.output_folder, pathNoExt + "_merged.xml.txt");
             SaveMergedMGScript(alignmentPoints, mergedOutputPath, mg_leftovers);
 
             //Use the inserted instructions
-            MergedScriptPostProcessing.PostProcessingMain.InsertMGLinesUsingPS3XML(mergedOutputPath, Path.Combine(config.output_folder, pathNoExt + "_bgm.txt"), config);
+            MergedScriptPostProcessing.PostProcessingMain.InsertMGLinesUsingPS3XML(mergedOutputPath, Path.Combine(config.output_folder, pathNoExt + "_OUTPUT.txt"), config);
 
             //Printout guessed ps3 region if region not specified in config file
             if(mgInfo.ps3_regions.Count == 0)
