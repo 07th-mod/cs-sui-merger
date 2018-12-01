@@ -18,6 +18,8 @@ namespace SuiMerger.MergedScriptPostProcessing
 
         public static void InsertMGLinesUsingPS3XML(string mergedMGScriptPath, string outputPath, MergerConfiguration configuration)
         {
+            const bool USE_OLD_METHOD_FOR_INSERT_BGM = false; 
+
             Console.WriteLine($"--------- Begin Applying Postprocessing Stage 1 to {mergedMGScriptPath} ------");
 
             //Detect the BGM channel of the original Manga Gamer script. This is used for BGM insertion and FadeOut insertion
@@ -61,23 +63,43 @@ namespace SuiMerger.MergedScriptPostProcessing
                     LineHasPlayBGMOnChannel(inst.GetInstructionForScript(), bgmChannelNumber) ||
                     LineHasFadeOutBGMOnChannel(inst.GetInstructionForScript(), bgmChannelNumber);
 
-                if (lineIsPlayBGMOrFadeBGM && inst.IsPS3() == false)
+                if (USE_OLD_METHOD_FOR_INSERT_BGM)
                 {
-                    continue;
-                }
+                    if (lineIsPlayBGMOrFadeBGM && inst.IsPS3() == false)
+                    {
+                        continue;
+                    }
 
-                outputStage2.Add(inst.GetInstructionForScript());
+                    outputStage2.Add(inst.GetInstructionForScript());
+                }
+                else
+                {
+                    //have to use LineHasPlayBGMOnChannel as I haven't yet decoded these instructions from mangagamer script - they appear as 'genericinstruction's                     
+                    if (lineIsPlayBGMOrFadeBGM)
+                    {
+                        outputStage2.Add(inst.IsPS3() ?
+                                            $"if (GetGlobalFlag(GAltBGMflow) == 1) {{ {inst.GetInstructionForScript()} }}" :
+                                            $"if (GetGlobalFlag(GAltBGMflow) == 0) {{ {inst.GetInstructionForScript()} }}");
+                    }
+                    else
+                    {
+                        if(inst.IsPS3())
+                        {
+                            outputStage2.Add("//Below Instruction is from PS3 XML:");
+                        }
+
+                        outputStage2.Add(inst.GetInstructionForScript());
+                    }
+                }
             }
 
             // --------- Finally, write the output to file. ---------
             FileUtils.WriteAllLinesCustomNewline(outputPath, outputStage2);
         }
 
-        //Some files use different BGM channels for music (as opposed to background sounds). Another
-        //function should scan the file to determine the BGM channel, and set bgmChannelNumber appropriately
-        private static void HandlePS3Chunk(string ps3Chunk, List<MangaGamerInstruction> linesToOutput, int bgmChannelNumber)
+        private static List<MangaGamerInstruction> convertPS3InstructionsToMGInstructions(string ps3Chunk)
         {
-            List<MangaGamerInstruction> instructionsToInsert = new List<MangaGamerInstruction>();
+            List<MangaGamerInstruction> instructionsList = new List<MangaGamerInstruction>();
 
             //Read through the ps3 chunk of xml and generate instruction objects for the targeted instructions
             PS3InstructionReader ps3Reader = new PS3InstructionReader(new StringReader(ps3Chunk));
@@ -87,21 +109,41 @@ namespace SuiMerger.MergedScriptPostProcessing
                 {
                     case "BGM_PLAY":
                         string bgmFileName = ps3Reader.reader.GetAttribute("bgm_file");
-                        instructionsToInsert.Add(new MGPlayBGM(2, bgmFileName, true));
+                        instructionsList.Add(new MGPlayBGM(2, bgmFileName, true));
                         break;
 
                     case "BGM_FADE":
                         int duration = Convert.ToInt32(ps3Reader.reader.GetAttribute("duration"));
-                        instructionsToInsert.Add(new MGFadeOutBGM(2, duration, true));
+                        instructionsList.Add(new MGFadeOutBGM(2, duration, true));
+                        break;
+
+                    case "SFX_PLAY":
+                        string sfx_file = ps3Reader.reader.GetAttribute("sfx_file");
+                        instructionsList.Add(new MGPlaySE(sfx_file, true));
                         break;
                 }
             }
 
+            return instructionsList;
+        }
+
+        /// <summary>
+        /// This handles inserting BGMPlay and BGMFade instructions into the output.
+        /// It assumes that 'partialLinesToOutput' is a partial list of instructions currently being generated, 
+        /// where the 'end' of the list represents where the ps3 chunk is. 
+        /// </summary>
+        /// <param name="PS3InstructionsAsMGInstructions"></param>
+        /// <param name="partialLinesToOutput"></param>
+        /// <param name="bgmChannelNumber"></param>
+        private static List<MangaGamerInstruction> ConsumeInsertBGMPlayAndFadeIntoOutput(List<MangaGamerInstruction> PS3InstructionsAsMGInstructions, List<MangaGamerInstruction> partialLinesToOutput, int bgmChannelNumber)
+        {
             //Only insert only the last play/fadebgm instruction in the list
             MangaGamerInstruction lastFade = null;
             MangaGamerInstruction lastBGMPlay = null;
 
-            foreach (MangaGamerInstruction mgInstruction in instructionsToInsert)
+            List<MangaGamerInstruction> newPS3InstructionsAsMGInstructions = new List<MangaGamerInstruction>();
+
+            foreach (MangaGamerInstruction mgInstruction in PS3InstructionsAsMGInstructions)
             {
                 switch (mgInstruction)
                 {
@@ -114,8 +156,15 @@ namespace SuiMerger.MergedScriptPostProcessing
                         DebugUtils.Print($"Found BGM fade: {fadeBGM.GetInstructionForScript()}");
                         lastFade = fadeBGM;
                         break;
+
+                    default:
+                        newPS3InstructionsAsMGInstructions.Add(mgInstruction);
+                        break;
                 }
             }
+
+            //set PS3InstructionsAsMGInstructions empty so it can't be used anymore
+            PS3InstructionsAsMGInstructions.Clear();
 
             //remember what the last instruction (fade or play bgm) - this is the instruction to be inserted
             MangaGamerInstruction lastFadeBGMOrPlayBGM = lastBGMPlay != null ? lastBGMPlay : lastFade;
@@ -131,25 +180,39 @@ namespace SuiMerger.MergedScriptPostProcessing
 
                 //search backwards in the current output until finding the insertion point regex (PlayBGM( or FadeOutBGM()
                 //however if find a dialogue line, give up and just insert at the end of the list (where the ps3 xml is)
-                for (int i = linesToOutput.Count - 1; i > 0; i--)
+                for (int i = partialLinesToOutput.Count - 1; i > 0; i--)
                 {
-                    MangaGamerInstruction currentLine = linesToOutput[i];
+                    MangaGamerInstruction currentLine = partialLinesToOutput[i];
                     if (dialogueRegex.IsMatch(currentLine.GetInstructionForScript()))
                     {
                         //insert at end of list
-                        linesToOutput.Add(lastFadeBGMOrPlayBGM);
+                        partialLinesToOutput.Add(lastFadeBGMOrPlayBGM);
                         break;
                     }
                     else if ((shouldFindPlayBGM && LineHasPlayBGMOnChannel(currentLine.GetInstructionForScript(), bgmChannelNumber)) ||
                              (!shouldFindPlayBGM && LineHasFadeOutBGMOnChannel(currentLine.GetInstructionForScript(), bgmChannelNumber)))
                     {
                         //replace similar instruction with this instruction
-                        linesToOutput[i] = lastFadeBGMOrPlayBGM;
+                        //partialLinesToOutput[i] = lastFadeBGMOrPlayBGM;
+                        partialLinesToOutput.Insert(i, lastFadeBGMOrPlayBGM);
                         break;
                     }
                 }
 
             }
+
+            return newPS3InstructionsAsMGInstructions;
+        }
+
+        //Some files use different BGM channels for music (as opposed to background sounds). Another
+        //function should scan the file to determine the BGM channel, and set bgmChannelNumber appropriately
+        private static void HandlePS3Chunk(string ps3Chunk, List<MangaGamerInstruction> out_partialLinesToOutput, int bgmChannelNumber)
+        {
+            //handle just the BGMPlay and BGMFade instructions.
+            List<MangaGamerInstruction> instructionsWithoutPlayOrFade =  ConsumeInsertBGMPlayAndFadeIntoOutput(convertPS3InstructionsToMGInstructions(ps3Chunk), out_partialLinesToOutput, bgmChannelNumber);
+
+            //other types of instructions are just inserted directly
+            out_partialLinesToOutput.AddRange(instructionsWithoutPlayOrFade);
         }
 
         /// <summary>
