@@ -29,6 +29,7 @@ namespace SuiMerger
                     else
                     {
                         Console.WriteLine($"WARNING: MG dialogue has no japanese characters - it won't be used for matching: [{line}]");
+                        previousLines.Add(line);
                     }
                 }
                 else
