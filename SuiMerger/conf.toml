@@ -42,6 +42,14 @@ path = "tsumi_025_3.txt"
 ps3_regions = [ [91816,92563] ]
 
 
+[[input]]
+path = "onik_005.txt"
+ps3_regions = [[22955, 23546]]
+
+[[input]]
+path = "onik_009.txt"
+ps3_regions = [[25674, 26311]]
+
 #[[input]]
 #path = "tsumi_026.txt"
 #ps3_regions = [ [92565, 93391] ]

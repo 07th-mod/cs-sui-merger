@@ -287,13 +287,15 @@ namespace SuiMerger
             //Printout guessed ps3 region if region not specified in config file
             if(mgInfo.ps3_regions.Count == 0)
             {
+                const int amountToFind = 200;
                 int firstMatchID = -1;
                 int lastMatchID = -1;
 
                 PS3DialogueInstruction ps3Parent = null;
 
-                Console.WriteLine("\n[  HINT  ]: Printing first 5 matching PS3 lines");
+                Console.WriteLine($"\n[  HINT  ]: Printing first {amountToFind} matching PS3 lines");
                 int numFound = 0;
+                int prev_match = 0;
                 foreach (AlignmentPoint ap in alignmentPoints)
                 {
                     if(ap.IsMatch())
@@ -301,23 +303,27 @@ namespace SuiMerger
                         if(ap.ps3DialogFragment.parent != ps3Parent)
                         {
                             ps3Parent = ap.ps3DialogFragment.parent;
+                            
                             //record the match so it can be saved to an output file
                             if (firstMatchID == -1)
                             {
                                 firstMatchID = ps3Parent.ID;
                             }
 
-                            Console.WriteLine($"\tStart {numFound}: {ps3Parent.ID} - {ps3Parent.translatedRawXML}");
+                            Console.WriteLine($"\tStart {numFound}: {ps3Parent.ID} - [D{ps3Parent.ID - prev_match}] - {ps3Parent.translatedRawXML}");
                             numFound += 1;
 
-                            if (numFound > 5)
+                            prev_match = ps3Parent.ID;
+
+                            if (numFound > amountToFind)
                                 break;
                         }
                     }
                 }
 
-                Console.WriteLine("\n[  HINT  ]: Printing last 5 matching PS3 lines");
+                Console.WriteLine($"\n[  HINT  ]: Printing last {amountToFind} matching PS3 lines");
                 numFound = 0;
+                prev_match = 0;
                 for (int i = alignmentPoints.Count-1; i > 0; i--)
                 {
                     AlignmentPoint ap = alignmentPoints[i];
@@ -326,16 +332,19 @@ namespace SuiMerger
                         if (ap.ps3DialogFragment.parent != ps3Parent)
                         {
                             ps3Parent = ap.ps3DialogFragment.parent;
+                           
                             //record the match so it can be saved to an output file
                             if (lastMatchID == -1)
                             {
                                 lastMatchID = ps3Parent.ID;
                             }
 
-                            Console.WriteLine($"\tEnd {numFound}: {ps3Parent.ID} - {ps3Parent.translatedRawXML}");
+                            Console.WriteLine($"\tEnd {numFound}: {ps3Parent.ID} - [D{ps3Parent.ID - prev_match}] - {ps3Parent.translatedRawXML}");
                             numFound += 1;
 
-                            if (numFound > 5)
+                            prev_match = ps3Parent.ID;
+
+                            if (numFound > amountToFind)
                                 break;
                         }
                     }
@@ -362,7 +371,9 @@ namespace SuiMerger
                     path = mgInfo.path,
                     ps3_regions = regions,
                 });
-            }
+
+                Pause();
+            }            
         }
 
         //wrapper to allow 'pausing' of program but still garbage collect everything to force files to write-out
@@ -475,9 +486,15 @@ namespace SuiMerger
             return 0;
         }
 
+        static void Pause()
+        {
+            Console.WriteLine(">>>> PROGRAM IS PAUSED <<<<<<\n\n Press ENTER to continue....");
+            Console.ReadKey();
+        }
+
         static void PauseThenErrorExit()
         {
-            Console.ReadKey();
+            Pause();
             Environment.Exit(-1);
         }
     }
