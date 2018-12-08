@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Text.RegularExpressions;
+using System.Diagnostics;
 
 namespace SuiMerger.MergedScriptPostProcessing
 {
@@ -83,6 +84,22 @@ namespace SuiMerger.MergedScriptPostProcessing
             FileUtils.WriteAllLinesCustomNewline(outputPath, outputStage2);
         }
 
+        private static int PS3TimeConversion(int ps3Time)
+        {
+            return (int)Math.Round(ps3Time / 60.0 * 1000.0);
+        }
+
+        /// <summary>
+        /// As per drdiablo's comments " I mapped channel 4 in the xml to channel 1 in the scripts, and 7 in xml to 0 in the scripts."
+        /// 
+        /// 0-1 looping sfx
+        /// 2 background music
+        /// 3 regular nonlooping sfx
+        /// 4+ voices
+        /// 
+        /// </summary>
+        /// <param name="ps3Chunk"></param>
+        /// <returns></returns>
         private static List<MangaGamerInstruction> convertPS3InstructionsToMGInstructions(string ps3Chunk)
         {
             List<MangaGamerInstruction> instructionsList = new List<MangaGamerInstruction>();
@@ -95,18 +112,64 @@ namespace SuiMerger.MergedScriptPostProcessing
                 {
                     case "BGM_PLAY":
                         string bgmFileName = ps3Reader.reader.GetAttribute("bgm_file");
-                        instructionsList.Add(new MGPlayBGM(2, bgmFileName, true));
+                        instructionsList.Add(new MGPlayBGM(2, bgmFileName, true));  //all PS3 BGM shall paly on channel 2
                         break;
 
                     case "BGM_FADE":
-                        int duration = Convert.ToInt32(ps3Reader.reader.GetAttribute("duration"));
-                        instructionsList.Add(new MGFadeOutBGM(2, duration, true));
+                        int durationBGMFade = PS3TimeConversion(Convert.ToInt32(ps3Reader.reader.GetAttribute("duration")));
+                        instructionsList.Add(new MGFadeOutBGM(2, durationBGMFade, true));
                         break;
 
                     case "SFX_PLAY":
+                        Debug.Assert(ps3Reader.reader.GetAttribute("single_play") == "1" || ps3Reader.reader.GetAttribute("single_play") == "0");
+
                         string sfx_file = ps3Reader.reader.GetAttribute("sfx_file");
-                        instructionsList.Add(new MGPlaySE(sfx_file, true));
+                        int ps3_sfx_channel = Int32.Parse(ps3Reader.reader.GetAttribute("sfx_channel"));
+                        bool ps3_single_play = ps3Reader.reader.GetAttribute("single_play") == "1";
+
+                        if (ps3_single_play)
+                        {
+                            //a 'normal', non looping sound effect shall be played on channel 3
+                            instructionsList.Add(new MGPlaySE(3, sfx_file, true));
+                        }
+                        else
+                        {
+                            if (ps3_sfx_channel == 4)
+                            {
+                                instructionsList.Add(new MGPlayBGM(1, sfx_file, true));
+                            }
+                            else if (ps3_sfx_channel == 7)
+                            {
+                                instructionsList.Add(new MGPlayBGM(0, sfx_file, true));
+                            }
+                            else
+                            {
+                                throw new Exception($"A ps3 sfx was found which is not on channel 4 or 7 (sorry, no debug output for this, please add it)");
+                            }
+                        }
+                        
                         break;
+
+                    case "CHANNEL_FADE":
+                        //these 'bgm fades' actually fade looping sound effects
+                        int durationFade = PS3TimeConversion(Convert.ToInt32(ps3Reader.reader.GetAttribute("duration")));
+                        int fadeChannel = Int32.Parse(ps3Reader.reader.GetAttribute("channel"));
+
+                        if (fadeChannel == 4)
+                        {
+                            instructionsList.Add(new MGFadeOutBGM(1, durationFade, true));
+                        }
+                        else if (fadeChannel == 7)
+                        {
+                            instructionsList.Add(new MGFadeOutBGM(0, durationFade, true));
+                        }
+                        else
+                        {
+                            Console.WriteLine($"WARNING: unknown PS3 channel fade, chan {fadeChannel}. Fade instruction ignored");
+                        }
+                        
+                        break;
+
                 }
             }
 
@@ -121,7 +184,7 @@ namespace SuiMerger.MergedScriptPostProcessing
         /// <param name="PS3InstructionsAsMGInstructions"></param>
         /// <param name="partialLinesToOutput"></param>
         /// <param name="bgmChannelNumber"></param>
-        private static List<MangaGamerInstruction> ConsumeInsertBGMPlayAndFadeIntoOutput(List<MangaGamerInstruction> PS3InstructionsAsMGInstructions, List<MangaGamerInstruction> partialLinesToOutput, int bgmChannelNumber)
+        /*private static List<MangaGamerInstruction> ConsumeInsertBGMPlayAndFadeIntoOutput(List<MangaGamerInstruction> PS3InstructionsAsMGInstructions, List<MangaGamerInstruction> partialLinesToOutput, int bgmChannelNumber)
         {
             //Only insert only the last play/fadebgm instruction in the list
             MangaGamerInstruction lastFade = null;
@@ -190,17 +253,19 @@ namespace SuiMerger.MergedScriptPostProcessing
             }
 
             return newPS3InstructionsAsMGInstructions;
-        }
+        }*/
 
         //Some files use different BGM channels for music (as opposed to background sounds). Another
         //function should scan the file to determine the BGM channel, and set bgmChannelNumber appropriately
         private static void HandlePS3Chunk(string ps3Chunk, List<MangaGamerInstruction> out_partialLinesToOutput, int bgmChannelNumber)
         {
             //handle just the BGMPlay and BGMFade instructions.
-            List<MangaGamerInstruction> instructionsWithoutPlayOrFade =  ConsumeInsertBGMPlayAndFadeIntoOutput(convertPS3InstructionsToMGInstructions(ps3Chunk), out_partialLinesToOutput, bgmChannelNumber);
+            //List<MangaGamerInstruction> instructionsWithoutPlayOrFade =  ConsumeInsertBGMPlayAndFadeIntoOutput(convertPS3InstructionsToMGInstructions(ps3Chunk), out_partialLinesToOutput, bgmChannelNumber);
+
+            List<MangaGamerInstruction> allInstructions = convertPS3InstructionsToMGInstructions(ps3Chunk);
 
             //other types of instructions are just inserted directly
-            out_partialLinesToOutput.AddRange(instructionsWithoutPlayOrFade);
+            out_partialLinesToOutput.AddRange(allInstructions);
         }
 
         /// <summary>

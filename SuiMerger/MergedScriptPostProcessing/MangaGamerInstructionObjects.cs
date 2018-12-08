@@ -37,9 +37,9 @@ namespace SuiMerger.MergedScriptPostProcessing
         readonly int volume;
         readonly int panning;
 
-        public MGPlaySE(string filename, bool isPS3) : base(isPS3, false)
+        public MGPlaySE(int channel, string filename, bool isPS3) : base(isPS3, false)
         {
-            channel = 3; //game scripts seem to use channel 3 for playing sound effects
+            this.channel = channel; //game scripts seem to use channel 3 for playing sound effects
             this.filename = filename;
             volume = 256; //default volume - not sure what ranges it is
             panning = 64; //default panning - not sure what ranges it is from-to?
@@ -58,10 +58,10 @@ namespace SuiMerger.MergedScriptPostProcessing
         readonly int channel;
         readonly int fadeTime;
 
-        public MGFadeOutBGM(int channel, int ps3Duration, bool isPS3) : base(isPS3, false)
+        public MGFadeOutBGM(int channel, int fadeTime, bool isPS3) : base(isPS3, false)
         {
             this.channel = channel;
-            this.fadeTime = (int)Math.Round(ps3Duration / 60.0 * 1000.0);
+            this.fadeTime = fadeTime;
         }
 
         public override string GetInstruction()
