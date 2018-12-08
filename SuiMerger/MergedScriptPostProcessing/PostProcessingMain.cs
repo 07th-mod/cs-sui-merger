@@ -15,6 +15,7 @@ namespace SuiMerger.MergedScriptPostProcessing
         static Regex dialogueRegex = new Regex(@"\s*OutputLine\(", RegexOptions.IgnoreCase);
         static Regex fadeOutBGMMusicRegex = new Regex(@"\s*FadeOutBGM\(\s*(\d)", RegexOptions.IgnoreCase);
         static Regex playBGMMusicRegex = new Regex(@"\s*PlayBGM\(\s*(\d)", RegexOptions.IgnoreCase);
+        static Regex playSERegex = new Regex(@"\s*PlaySE\(", RegexOptions.IgnoreCase);
 
         public static void InsertMGLinesUsingPS3XML(string mergedMGScriptPath, string outputPath, MergerConfiguration configuration)
         {
@@ -58,40 +59,23 @@ namespace SuiMerger.MergedScriptPostProcessing
             List<string> outputStage2 = new List<string>();
             foreach (MangaGamerInstruction inst in outputStage1)
             {
-                //clear out any Music (channel 2) BGM or Fade lines from the original manga gamer script
-                bool lineIsPlayBGMOrFadeBGM =
-                    LineHasPlayBGMOnChannel(inst.GetInstruction(), bgmChannelNumber) ||
-                    LineHasFadeOutBGMOnChannel(inst.GetInstruction(), bgmChannelNumber);
-
-                if (USE_OLD_METHOD_FOR_INSERT_BGM)
+                //TODO: correctly interpret mangagamer instructions instead of using regexes to determine the line typ
+                if (inst.IsPS3())
                 {
-                    if (lineIsPlayBGMOrFadeBGM && inst.IsPS3() == false)
-                    {
-                        continue;
-                    }
-
-                    outputStage2.Add("\t" + inst.GetInstruction());
+                    //wrap all ps3-origin instructions in GAltBGMflow
+                    outputStage2.Add($"\tif (GetGlobalFlag(GAltBGMflow) == 1) {{ {inst.GetInstruction()} }}  // inserted PS3 instruction");
+                }
+                else if(fadeOutBGMMusicRegex.IsMatch(inst.GetInstruction()) || 
+                        playBGMMusicRegex.IsMatch(inst.GetInstruction()) || 
+                        playSERegex.IsMatch(inst.GetInstruction())) 
+                {
+                    //wrap only the above types of MG-origin instructions in GAltBGMflow
+                    outputStage2.Add($"\tif (GetGlobalFlag(GAltBGMflow) == 0) {{ {inst.GetInstruction()} }}");
                 }
                 else
                 {
-                    //have to use LineHasPlayBGMOnChannel as I haven't yet decoded these instructions from mangagamer script - they appear as 'genericinstruction's                     
-                    if (lineIsPlayBGMOrFadeBGM)
-                    {
-                        outputStage2.Add(inst.IsPS3() ?
-                                            $"\tif (GetGlobalFlag(GAltBGMflow) == 1) {{ {inst.GetInstruction()} }}  // inserted PS3 instruction" :
-                                            $"\tif (GetGlobalFlag(GAltBGMflow) == 0) {{ {inst.GetInstruction()} }}");
-                    }
-                    else
-                    {
-                        string output_instruction = inst.GetInstructionStandalone();
-
-                        if (inst.IsPS3())
-                        {
-                            output_instruction += " // inserted PS3 instruction";
-                        }
-
-                        outputStage2.Add(output_instruction);
-                    }
+                    //all other MG-origin instructions are output as-is
+                    outputStage2.Add(inst.GetInstructionStandalone());
                 }
             }
 
@@ -196,6 +180,8 @@ namespace SuiMerger.MergedScriptPostProcessing
                     {
                         //replace similar instruction with this instruction
                         //partialLinesToOutput[i] = lastFadeBGMOrPlayBGM;
+
+                        //for now, insert the playbgm just below the last similar playBGM instruction. Don't replace it.
                         partialLinesToOutput.Insert(i, lastFadeBGMOrPlayBGM);
                         break;
                     }
