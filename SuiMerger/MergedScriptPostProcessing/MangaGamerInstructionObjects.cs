@@ -10,33 +10,20 @@ namespace SuiMerger.MergedScriptPostProcessing
     abstract class MangaGamerInstruction
     {
         private readonly bool isPS3;   //True if instruction was generated from ps3 script, False otherwise.
-        private readonly bool noTab;
 
         protected MangaGamerInstruction(bool isPS3, bool noTab)
         {
             this.isPS3 = isPS3;
-            this.noTab = noTab;
         }
 
         //gets the instruction, without the tab character or newline
-        protected abstract string GetInstruction();
+        public abstract string GetInstruction();
 
-        //returns the instruction string with tab character
-        public string GetInstructionForScript()
-        {
-            if (noTab)
-            {
-                return GetInstruction();
-            }
-            else
-            {
-                return $"\t{GetInstruction()}";
-            }
-        }
+        //gets the instruction, appending 
+        public abstract string GetInstructionStandalone();
 
         //returns true if instruction originated from PS3 xml
         public bool IsPS3() => isPS3;
-
     }
 
     /// <summary>
@@ -58,7 +45,12 @@ namespace SuiMerger.MergedScriptPostProcessing
             panning = 64; //default panning - not sure what ranges it is from-to?
         }
 
-        protected override string GetInstruction() => $"PlaySE({channel}, \"{filename}\", {volume}, {panning});";
+        public override string GetInstruction() => $"PlaySE({channel}, \"{filename}\", {volume}, {panning});";
+
+        public override string GetInstructionStandalone()
+        {
+            return "\t" + GetInstruction();
+        }
     }
 
     class MGFadeOutBGM : MangaGamerInstruction
@@ -72,9 +64,14 @@ namespace SuiMerger.MergedScriptPostProcessing
             this.fadeTime = (int)Math.Round(ps3Duration / 60.0 * 1000.0);
         }
 
-        protected override string GetInstruction()
+        public override string GetInstruction()
         {
             return $"FadeOutBGM( {channel}, {fadeTime}, FALSE );";
+        }
+
+        public override string GetInstructionStandalone()
+        {
+            return "\t" + GetInstruction();
         }
     }
 
@@ -89,9 +86,14 @@ namespace SuiMerger.MergedScriptPostProcessing
             this.bgmFileName = bgmFileName;
         }
 
-        protected override string GetInstruction()
+        public override string GetInstruction()
         {
             return $"PlayBGM( {channel}, \"{bgmFileName}\", 128, 0 );";
+        }
+
+        public override string GetInstructionStandalone()
+        {
+            return "\t" + GetInstruction();
         }
     }
 
@@ -104,7 +106,12 @@ namespace SuiMerger.MergedScriptPostProcessing
             this.data = data;
         }
 
-        protected override string GetInstruction()
+        public override string GetInstruction()
+        {
+            return data.TrimStart();
+        }
+
+        public override string GetInstructionStandalone()
         {
             return data;
         }

@@ -12,9 +12,9 @@ namespace SuiMerger.MergedScriptPostProcessing
     {
         //Regexes used to parse the hybrid script
         //note: double quote is transformed into single quote in below @ string
-        static Regex dialogueRegex = new Regex(@"\tOutputLine\(", RegexOptions.IgnoreCase);
-        static Regex fadeOutBGMMusicRegex = new Regex(@"\tFadeOutBGM\(\s*(\d)", RegexOptions.IgnoreCase);
-        static Regex playBGMMusicRegex = new Regex(@"\tPlayBGM\(\s*(\d)", RegexOptions.IgnoreCase);
+        static Regex dialogueRegex = new Regex(@"\s*OutputLine\(", RegexOptions.IgnoreCase);
+        static Regex fadeOutBGMMusicRegex = new Regex(@"\s*FadeOutBGM\(\s*(\d)", RegexOptions.IgnoreCase);
+        static Regex playBGMMusicRegex = new Regex(@"\s*PlayBGM\(\s*(\d)", RegexOptions.IgnoreCase);
 
         public static void InsertMGLinesUsingPS3XML(string mergedMGScriptPath, string outputPath, MergerConfiguration configuration)
         {
@@ -60,8 +60,8 @@ namespace SuiMerger.MergedScriptPostProcessing
             {
                 //clear out any Music (channel 2) BGM or Fade lines from the original manga gamer script
                 bool lineIsPlayBGMOrFadeBGM =
-                    LineHasPlayBGMOnChannel(inst.GetInstructionForScript(), bgmChannelNumber) ||
-                    LineHasFadeOutBGMOnChannel(inst.GetInstructionForScript(), bgmChannelNumber);
+                    LineHasPlayBGMOnChannel(inst.GetInstruction(), bgmChannelNumber) ||
+                    LineHasFadeOutBGMOnChannel(inst.GetInstruction(), bgmChannelNumber);
 
                 if (USE_OLD_METHOD_FOR_INSERT_BGM)
                 {
@@ -70,7 +70,7 @@ namespace SuiMerger.MergedScriptPostProcessing
                         continue;
                     }
 
-                    outputStage2.Add(inst.GetInstructionForScript());
+                    outputStage2.Add("\t" + inst.GetInstruction());
                 }
                 else
                 {
@@ -78,17 +78,19 @@ namespace SuiMerger.MergedScriptPostProcessing
                     if (lineIsPlayBGMOrFadeBGM)
                     {
                         outputStage2.Add(inst.IsPS3() ?
-                                            $"if (GetGlobalFlag(GAltBGMflow) == 1) {{ {inst.GetInstructionForScript()} }}" :
-                                            $"if (GetGlobalFlag(GAltBGMflow) == 0) {{ {inst.GetInstructionForScript()} }}");
+                                            $"\tif (GetGlobalFlag(GAltBGMflow) == 1) {{ {inst.GetInstruction()} }}  // inserted PS3 instruction" :
+                                            $"\tif (GetGlobalFlag(GAltBGMflow) == 0) {{ {inst.GetInstruction()} }}");
                     }
                     else
                     {
-                        if(inst.IsPS3())
+                        string output_instruction = inst.GetInstructionStandalone();
+
+                        if (inst.IsPS3())
                         {
-                            outputStage2.Add("//Below Instruction is from PS3 XML:");
+                            output_instruction += " // inserted PS3 instruction";
                         }
 
-                        outputStage2.Add(inst.GetInstructionForScript());
+                        outputStage2.Add(output_instruction);
                     }
                 }
             }
@@ -148,12 +150,12 @@ namespace SuiMerger.MergedScriptPostProcessing
                 switch (mgInstruction)
                 {
                     case MGPlayBGM playBGM:
-                        DebugUtils.Print($"Found BGM play: {playBGM.GetInstructionForScript()}");
+                        DebugUtils.Print($"Found BGM play: {playBGM.GetInstruction()}");
                         lastBGMPlay = playBGM;
                         break;
 
                     case MGFadeOutBGM fadeBGM:
-                        DebugUtils.Print($"Found BGM fade: {fadeBGM.GetInstructionForScript()}");
+                        DebugUtils.Print($"Found BGM fade: {fadeBGM.GetInstruction()}");
                         lastFade = fadeBGM;
                         break;
 
@@ -173,7 +175,7 @@ namespace SuiMerger.MergedScriptPostProcessing
             if (lastFadeBGMOrPlayBGM != null)
             {
                 //When writing out instructions, need to add a \t otherwise game won't recognize it
-                DebugUtils.Print($"In this chunk, selected: {lastFadeBGMOrPlayBGM.GetInstructionForScript()}");
+                DebugUtils.Print($"In this chunk, selected: {lastFadeBGMOrPlayBGM.GetInstruction()}");
 
                 //find a good spot to insert the instruction, depending on the type (either playBGM or FadeBGM)
                 bool shouldFindPlayBGM = lastFadeBGMOrPlayBGM is MGPlayBGM;
@@ -183,14 +185,14 @@ namespace SuiMerger.MergedScriptPostProcessing
                 for (int i = partialLinesToOutput.Count - 1; i > 0; i--)
                 {
                     MangaGamerInstruction currentLine = partialLinesToOutput[i];
-                    if (dialogueRegex.IsMatch(currentLine.GetInstructionForScript()))
+                    if (dialogueRegex.IsMatch(currentLine.GetInstruction()))
                     {
                         //insert at end of list
                         partialLinesToOutput.Add(lastFadeBGMOrPlayBGM);
                         break;
                     }
-                    else if ((shouldFindPlayBGM && LineHasPlayBGMOnChannel(currentLine.GetInstructionForScript(), bgmChannelNumber)) ||
-                             (!shouldFindPlayBGM && LineHasFadeOutBGMOnChannel(currentLine.GetInstructionForScript(), bgmChannelNumber)))
+                    else if ((shouldFindPlayBGM && LineHasPlayBGMOnChannel(currentLine.GetInstruction(), bgmChannelNumber)) ||
+                             (!shouldFindPlayBGM && LineHasFadeOutBGMOnChannel(currentLine.GetInstruction(), bgmChannelNumber)))
                     {
                         //replace similar instruction with this instruction
                         //partialLinesToOutput[i] = lastFadeBGMOrPlayBGM;
