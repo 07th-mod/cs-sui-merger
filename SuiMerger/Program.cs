@@ -262,11 +262,31 @@ namespace SuiMerger
             //load all the mangagamer lines from the mangagamer file
             List<MangaGamerDialogue> allMangaGamerDialogue = MangaGamerScriptReader.GetDialogueLinesFromMangaGamerScript(fullPath, out List<string> mg_leftovers);
 
+            //PS3 Dialogue fragments
+            List<PS3DialogueFragment> ps3DialogueFragments = new List<PS3DialogueFragment>();
+            int ps3DialogueIndex = 0;
+            foreach (PS3DialogueInstruction ps3Dialogue in pS3DialogueInstructions)
+            {
+                List<string> splitDialogueStrings = PS3DialogueTools.SplitPS3StringNoNames(ps3Dialogue.data);
+                PS3DialogueFragment previousPS3DialogueFragment = null;
+                for (int i = 0; i < splitDialogueStrings.Count; i++)
+                {
+                    //dummy instructions index into the ps3DialogueList (for now...)
+                    PS3DialogueFragment ps3DialogueFragment = new PS3DialogueFragment(ps3Dialogue, splitDialogueStrings[i], i, previousPS3DialogueFragment);
+                    ps3DialogueFragments.Add(ps3DialogueFragment);
+                    previousPS3DialogueFragment = ps3DialogueFragment;
+                }
+                ps3DialogueIndex++;
+            }
+
+            //If no ps3 regions specified, scan for regions, then print and let user fill in?
+            //if (mgInfo.ps3_regions.Count == 0
+
             //Diff the dialogue
-            List<AlignmentPoint> allAlignmentPoints = Differ.DoDiff(config.temp_folder, allMangaGamerDialogue, pS3DialogueInstructions, out List<PS3DialogueFragment> fragments, debugFilenamePrefix: pathNoExt);
+            List<AlignmentPoint> allAlignmentPoints = Differ.DoDiff(config.temp_folder, allMangaGamerDialogue, ps3DialogueFragments, debugFilenamePrefix: pathNoExt);
 
             //Sanity check the alignment points by making sure there aren't missing any values
-            SanityCheckAlignmentPoints(allAlignmentPoints, allMangaGamerDialogue, fragments);
+            SanityCheckAlignmentPoints(allAlignmentPoints, allMangaGamerDialogue, ps3DialogueFragments);
 
             //trim alignment points to reduce output
             List<AlignmentPoint> alignmentPoints = config.trim_after_diff ? TrimAlignmentPoints(allAlignmentPoints) : allAlignmentPoints;

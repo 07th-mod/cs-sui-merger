@@ -135,35 +135,18 @@ namespace SuiMerger
         //This function performs the diff given the two lists of dialogue.
         //It then UPDATES the values in the mangaGamerDialogueList and the ps3DialogueList (the DialogueBase.other value is updated on each dialogue object!)
         //If a dialogue cannot be associated, it is set to NULL.
-        public static List<AlignmentPoint> DoDiff(string tempFolderPath, List<MangaGamerDialogue> mangaGamerDialogueList, List<PS3DialogueInstruction> ps3DialogueList, out List<PS3DialogueFragment> dummyPS3Instructions, string debugFilenamePrefix = "")
+        public static List<AlignmentPoint> DoDiff(string tempFolderPath, List<MangaGamerDialogue> mangaGamerDialogueList, List<PS3DialogueFragment> ps3DialogueFragments, string debugFilenamePrefix = "")
         {
             //Convert PS3 Dialogue list into list of subsections before performing diff - this can be re-assembled later!
             string mangaGamerDiffInputPath = Path.Combine(tempFolderPath, debugFilenamePrefix + "_diffInputA.txt");
             string PS3DiffInputPath = Path.Combine(tempFolderPath, debugFilenamePrefix + "_diffInputB.txt");
             string diffOutputPath = Path.Combine(tempFolderPath, debugFilenamePrefix + "_diffOutput.txt");
 
-            //Generate dummy mangaGamerDialogues here
-            dummyPS3Instructions = new List<PS3DialogueFragment>();
-            int ps3DialogueIndex = 0;
-            foreach (PS3DialogueInstruction ps3Dialogue in ps3DialogueList)
-            {
-                List<string> splitDialogueStrings = PS3DialogueTools.SplitPS3StringNoNames(ps3Dialogue.data);
-                PS3DialogueFragment previousPS3DialogueFragment = null;
-                for (int i = 0; i < splitDialogueStrings.Count; i++)
-                {
-                    //dummy instructions index into the ps3DialogueList (for now...)
-                    PS3DialogueFragment ps3DialogueFragment = new PS3DialogueFragment(ps3Dialogue, splitDialogueStrings[i], i, previousPS3DialogueFragment);
-                    dummyPS3Instructions.Add(ps3DialogueFragment);
-                   previousPS3DialogueFragment = ps3DialogueFragment;
-                }
-                ps3DialogueIndex++;
-            }
-
             //write the diff-prepared manga gamer dialogue to a file
             WriteListOfDialogueToFile(mangaGamerDialogueList, mangaGamerDiffInputPath);
 
             //write the diff-prepared ps3 dialogue to a file
-            WriteListOfDialogueToFile(dummyPS3Instructions, PS3DiffInputPath);
+            WriteListOfDialogueToFile(ps3DialogueFragments, PS3DiffInputPath);
 
             //do the diff
             string diffResult = RunDiffTool(mangaGamerDiffInputPath, PS3DiffInputPath);
@@ -198,7 +181,7 @@ namespace SuiMerger
                     char lineType = line[0];
                     if(lineType == ' ') //lines match
                     {
-                        PS3DialogueFragment dummyPS3Instruction = dummyPS3Instructions[ps3Index];
+                        PS3DialogueFragment dummyPS3Instruction = ps3DialogueFragments[ps3Index];
                         MangaGamerDialogue currentMangaGamer = mangaGamerDialogueList[mgIndex];
 
                         //associate the fragment with the mangagamer dialogue
@@ -216,7 +199,7 @@ namespace SuiMerger
                     }
                     else if(lineType == '+') //only exist in ps3
                     {
-                        PS3DialogueFragment currentDialog = dummyPS3Instructions[ps3Index];
+                        PS3DialogueFragment currentDialog = ps3DialogueFragments[ps3Index];
                         unmatchedSequence.Add(new AlignmentPoint(null, currentDialog));
                         ps3Index++;
                     }
