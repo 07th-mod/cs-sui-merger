@@ -242,6 +242,70 @@ namespace SuiMerger
             File.WriteAllText(outputPath, reportSB.ToString());
         }
 
+        static PS3DialogueFragment SearchForBestPS3Dialogues(List<PS3DialogueFragment> ps3DialogueFragments, MangaGamerDialogue mgDialogueToSearch)
+        {
+            string mangaGamerChoiceForDiff = Differ.PrepareStringForDiff(mgDialogueToSearch.data);
+
+            float lowestDistance = float.MaxValue;
+            PS3DialogueFragment bestFrag = null;
+
+            foreach (var frag in ps3DialogueFragments)
+            {
+                string fragmentForDiff = Differ.PrepareStringForDiff(frag.data);
+
+                //if ps3 fragment is of length 0, skip it
+                if (fragmentForDiff.Length == 0)
+                {
+                    continue;
+                }
+
+                float rawLevenshtein = (float)Fastenshtein.Levenshtein.Distance(mangaGamerChoiceForDiff, fragmentForDiff);
+                float scaledLevenshtein = rawLevenshtein / Math.Max(mangaGamerChoiceForDiff.Length, fragmentForDiff.Length);
+
+                if (scaledLevenshtein < lowestDistance)
+                {
+                    lowestDistance = scaledLevenshtein;
+                    bestFrag = frag;
+                }
+            }
+
+            return bestFrag;
+        }
+
+        static int? AnalyseEntries(List<PS3DialogueFragment> ps3DialogueFragments, List<MangaGamerDialogue> allMangaGamerDialogue, int amount, bool isStart)
+        {
+            int startIndex = isStart ? 0 : allMangaGamerDialogue.Count - amount;
+            int endIndex = isStart ? amount : allMangaGamerDialogue.Count;
+
+            List<int> resultIndexes = new List<int>();
+            for (int i = startIndex; i < endIndex; i++)
+            {
+                var mgdialogue = allMangaGamerDialogue[i];
+                var bestMatch = SearchForBestPS3Dialogues(ps3DialogueFragments, mgdialogue);
+                Console.WriteLine($"MG : {mgdialogue.ToString()}");
+                Console.WriteLine($"PS3: {bestMatch.ToString()}\n");
+                resultIndexes.Add(bestMatch.ID);
+            }
+
+            bool resultsAreSequential = true;
+            for (int i = 0; i < resultIndexes.Count-1; i++)
+            {
+                if(resultIndexes[i+1] - resultIndexes[i] > 1)
+                {
+                    resultsAreSequential = false;
+                }
+            }
+
+            if(resultsAreSequential)
+            {
+                return isStart ? resultIndexes[0] : resultIndexes[resultIndexes.Count-1];
+            }
+            else
+            {
+                return null;
+            }
+        }
+
         /// <summary>
         /// processes a single mangagamer script, attempting to merge the matching ps3 instructions
         /// </summary>
@@ -280,7 +344,46 @@ namespace SuiMerger
             }
 
             //If no ps3 regions specified, scan for regions, then print and let user fill in?
-            //if (mgInfo.ps3_regions.Count == 0
+            if (mgInfo.ps3_regions.Count == 0)
+            {
+                //print the first few and last mangagamer instructions
+                //skip if length too small?
+                Console.WriteLine("------- Finding first 5 entries -------");
+                int? startResult = AnalyseEntries(ps3DialogueFragments, allMangaGamerDialogue, amount: 5, isStart: true);
+                if(startResult.HasValue)
+                {
+                    Console.WriteLine($"Best guess at start PS3 ID: {startResult.Value}");
+                }
+                else
+                {
+                    Console.WriteLine("Not sure about start PS3 ID. Please inspect manually.");
+                }
+
+                Console.WriteLine("------- Finding last 5 entries -------");
+                int? endResult = AnalyseEntries(ps3DialogueFragments, allMangaGamerDialogue, amount: 5, isStart: false);
+                if (endResult.HasValue)
+                {
+                    Console.WriteLine($"Best guess at last PS3 ID: {endResult.Value}");
+                }
+                else
+                {
+                    Console.WriteLine("Not sure about last PS3 ID. Please inspect manually.");
+                }
+
+                if(startResult.HasValue && endResult.HasValue)
+                {
+                    Console.WriteLine("You can copy this into the conf.toml file\n\n");
+                    Console.WriteLine("[[input]]");
+                    Console.WriteLine($@"path = ""{mgInfo.path}""");
+                    Console.WriteLine($"ps3_regions = [[{startResult.Value}, {endResult.Value}]]");
+                }
+                else
+                {
+                    Console.WriteLine("Please determine the start and end PS3 ID, then place the results in the conf.toml file");
+                }
+
+                Console.ReadKey();
+            }
 
             //Diff the dialogue
             List<AlignmentPoint> allAlignmentPoints = Differ.DoDiff(config.temp_folder, allMangaGamerDialogue, ps3DialogueFragments, debugFilenamePrefix: pathNoExt);
