@@ -58,7 +58,7 @@ namespace SuiMerger.MergedScriptPostProcessing
                 if (inst.IsPS3())
                 {
                     //wrap all ps3-origin instructions in GAltBGMflow
-                    outputStage2.Add($"\tif (GetGlobalFlag(GAltBGMflow) == 1) {{ {inst.GetInstruction()} }}  // inserted PS3 instruction");
+                    outputStage2.Add($"\tif (GetGlobalFlag(GAltBGMflow) == 1) {{ {inst.GetInstruction()} }}");
                 }
                 else if(fadeOutBGMMusicRegex.IsMatch(inst.GetInstruction()) || 
                         playBGMMusicRegex.IsMatch(inst.GetInstruction()) || 

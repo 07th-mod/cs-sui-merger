@@ -45,7 +45,11 @@ namespace SuiMerger.MergedScriptPostProcessing
             panning = 64; //default panning - not sure what ranges it is from-to?
         }
 
-        public override string GetInstruction() => $"PlaySE({channel}, \"{filename}\", {volume}, {panning});";
+        public override string GetInstruction()
+        {
+            string ps3Prefix = IsPS3() ? "ps3/" : String.Empty;
+            return $"PlaySE({channel}, \"{ps3Prefix}{filename}\", {volume}, {panning});";
+        }
 
         public override string GetInstructionStandalone()
         {
@@ -88,7 +92,8 @@ namespace SuiMerger.MergedScriptPostProcessing
 
         public override string GetInstruction()
         {
-            return $"PlayBGM( {channel}, \"{bgmFileName}\", 128, 0 );";
+            string ps3Prefix = IsPS3() ? "ps3/" : String.Empty;
+            return $"PlayBGM( {channel}, \"{ps3Prefix}{bgmFileName}\", 128, 0 );";
         }
 
         public override string GetInstructionStandalone()
