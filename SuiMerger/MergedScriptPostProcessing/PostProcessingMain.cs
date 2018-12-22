@@ -43,12 +43,6 @@ namespace SuiMerger.MergedScriptPostProcessing
                     //handle a mangagamer chunk
                     foreach (string mgScriptLine in chunk.lines)
                     {
-                        //add a fadebgm before last line of the script
-                        if (mgScriptLine.Trim() == "}")
-                        {
-                            outputStage1.Add(new GenericInstruction("\tFadeOutBGM(0,1000,FALSE);", false));
-                        }
-
                         outputStage1.Add(new GenericInstruction(mgScriptLine, false));
                     }
                 }
