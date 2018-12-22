@@ -346,6 +346,9 @@ namespace SuiMerger
             //If no ps3 regions specified, scan for regions, then print and let user fill in?
             if (mgInfo.ps3_regions.Count == 0)
             {
+                Console.WriteLine($"The file [{mgInfo.path}] does not have the PS3 region marked in the conf.toml file!");
+                Console.WriteLine($"Scanning for PS3 region...");
+
                 //print the first few and last mangagamer instructions
                 //skip if length too small?
                 Console.WriteLine("------- Finding first 5 entries -------");
@@ -370,17 +373,24 @@ namespace SuiMerger
                     Console.WriteLine("Not sure about last PS3 ID. Please inspect manually.");
                 }
 
+                string result_start_id = "<START_REGION>";
+                string result_end_id = "<END_REGION>";
+
                 if(startResult.HasValue && endResult.HasValue)
                 {
-                    Console.WriteLine("You can copy this into the conf.toml file\n\n");
-                    Console.WriteLine("[[input]]");
-                    Console.WriteLine($@"path = ""{mgInfo.path}""");
-                    Console.WriteLine($"ps3_regions = [[{startResult.Value}, {endResult.Value}]]");
+                    Console.WriteLine("AUTOREGION SUCCESS: You can copy this into the conf.toml file\n\n");
+                    result_start_id = startResult.Value.ToString();
+                    result_end_id = endResult.Value.ToString();
                 }
                 else
                 {
-                    Console.WriteLine("Please determine the start and end PS3 ID, then place the results in the conf.toml file");
+                    Console.WriteLine($"AUTOREGION FAIL: Region couldn't be determined confidently. Please use the above information and the ps3 script" +
+                        $"to determine the PS3 region manually, then place the results in the conf.toml file as per below");
                 }
+
+                Console.WriteLine("[[input]]");
+                Console.WriteLine($@"path = ""{mgInfo.path}""");
+                Console.WriteLine($"ps3_regions = [[{result_start_id}, {result_end_id}]]");
 
                 Console.ReadKey();
             }
@@ -406,97 +416,6 @@ namespace SuiMerger
 
             //Use the inserted instructions
             MergedScriptPostProcessing.PostProcessingMain.InsertMGLinesUsingPS3XML(mergedOutputPath, Path.Combine(config.output_folder, pathNoExt + "_OUTPUT.txt"), config);
-
-            //Printout guessed ps3 region if region not specified in config file
-            if(mgInfo.ps3_regions.Count == 0)
-            {
-                const int amountToFind = 200;
-                int firstMatchID = -1;
-                int lastMatchID = -1;
-
-                PS3DialogueInstruction ps3Parent = null;
-
-                Console.WriteLine($"\n[  HINT  ]: Printing first {amountToFind} matching PS3 lines");
-                int numFound = 0;
-                int prev_match = 0;
-                foreach (AlignmentPoint ap in alignmentPoints)
-                {
-                    if(ap.IsMatch())
-                    {
-                        if(ap.ps3DialogFragment.parent != ps3Parent)
-                        {
-                            ps3Parent = ap.ps3DialogFragment.parent;
-                            
-                            //record the match so it can be saved to an output file
-                            if (firstMatchID == -1)
-                            {
-                                firstMatchID = ps3Parent.ID;
-                            }
-
-                            Console.WriteLine($"\tStart {numFound}: {ps3Parent.ID} - [D{ps3Parent.ID - prev_match}] - {ps3Parent.translatedRawXML}");
-                            numFound += 1;
-
-                            prev_match = ps3Parent.ID;
-
-                            if (numFound > amountToFind)
-                                break;
-                        }
-                    }
-                }
-
-                Console.WriteLine($"\n[  HINT  ]: Printing last {amountToFind} matching PS3 lines");
-                numFound = 0;
-                prev_match = 0;
-                for (int i = alignmentPoints.Count-1; i > 0; i--)
-                {
-                    AlignmentPoint ap = alignmentPoints[i];
-                    if (ap.IsMatch())
-                    {
-                        if (ap.ps3DialogFragment.parent != ps3Parent)
-                        {
-                            ps3Parent = ap.ps3DialogFragment.parent;
-                           
-                            //record the match so it can be saved to an output file
-                            if (lastMatchID == -1)
-                            {
-                                lastMatchID = ps3Parent.ID;
-                            }
-
-                            Console.WriteLine($"\tEnd {numFound}: {ps3Parent.ID} - [D{ps3Parent.ID - prev_match}] - {ps3Parent.translatedRawXML}");
-                            numFound += 1;
-
-                            prev_match = ps3Parent.ID;
-
-                            if (numFound > amountToFind)
-                                break;
-                        }
-                    }
-                }
-
-                
-                List<List<int>> regions;
-                //check for invalid match region
-                if (firstMatchID == -1 || lastMatchID == -1)
-                {
-                    Console.WriteLine($"[  Warn  ]: Can't find match region for {mgInfo.path}");
-                    regions = new List<List<int>>();
-                }
-                else
-                {
-                    regions = new List<List<int>>
-                    {
-                        new List<int> {firstMatchID, lastMatchID}
-                    };
-                }
-
-                guessedInputInfos.Add(new InputInfo
-                {
-                    path = mgInfo.path,
-                    ps3_regions = regions,
-                });
-
-                Pause();
-            }            
         }
 
         //wrapper to allow 'pausing' of program but still garbage collect everything to force files to write-out
