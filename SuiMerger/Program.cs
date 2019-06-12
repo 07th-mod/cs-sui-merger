@@ -352,7 +352,7 @@ namespace SuiMerger
                 //print the first few and last mangagamer instructions
                 //skip if length too small?
                 Console.WriteLine("------- Finding first 5 entries -------");
-                int? startResult = AnalyseEntries(ps3DialogueFragments, allMangaGamerDialogue, amount: 5, isStart: true);
+                int? startResult = AnalyseEntries(ps3DialogueFragments, allMangaGamerDialogue, amount: 10, isStart: true);
                 if(startResult.HasValue)
                 {
                     Console.WriteLine($"Best guess at start PS3 ID: {startResult.Value}");
@@ -363,7 +363,7 @@ namespace SuiMerger
                 }
 
                 Console.WriteLine("------- Finding last 5 entries -------");
-                int? endResult = AnalyseEntries(ps3DialogueFragments, allMangaGamerDialogue, amount: 5, isStart: false);
+                int? endResult = AnalyseEntries(ps3DialogueFragments, allMangaGamerDialogue, amount: 10, isStart: false);
                 if (endResult.HasValue)
                 {
                     Console.WriteLine($"Best guess at last PS3 ID: {endResult.Value}");
