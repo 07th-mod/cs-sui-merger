@@ -29,10 +29,14 @@ namespace SuiMerger
 
         public bool trim_after_diff { get; set; }
 
-        //per each mg input config
+        /// <summary>
+        /// per each mg input config
+        /// </summary>
         public List<InputInfo> input { get; set; }
 
-        //list of folders to search for BGM (used for inserting PS3 BGM)
+        /// <summary>
+        /// list of folders to search for BGM (used for inserting PS3 BGM)
+        /// </summary>
         public List<String> bgm_folders { get; set; }
         public double music_threshold_seconds { get; set; }
     }
@@ -40,7 +44,10 @@ namespace SuiMerger
     class InputInfo
     {
         public string path { get; set; }
-        public List<List<int>> ps3_regions { get; set; } //array of 2 element regions defining sections of the ps3 to match against, IN ORDER 
+        /// <summary>
+        /// //array of 2 element regions defining sections of the ps3 to match against, IN ORDER
+        /// </summary>
+        public List<List<int>> ps3_regions { get; set; }
     }
 
     class HintParser

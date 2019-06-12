@@ -27,6 +27,7 @@ namespace SuiMerger
         /// </summary>
         /// <param name="s"></param>
         /// <returns></returns>
+        /// TODO: if mangagamer script uses one method of filtering, and PS3 uses another method...that may result in a wrong match when it really should match.
         public static string PrepareStringForDiff(string s)
         {
             {
