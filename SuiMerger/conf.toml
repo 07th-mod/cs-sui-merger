@@ -34,22 +34,45 @@ input_folder = "input"
 # if any inputs, this path will be used to put the guessed matches in .toml format
 guessed_matches = "guessed_matches.toml"
 
-bgm_folders = ['''D:\drojf_temp\BGM''']
+bgm_folders = ['''C:\tempsui2\bgm''']
 music_threshold_seconds = 30.0
+
+#[[input]]
+#path = "tsumi_025_3.txt"
+#ps3_regions = [ [91816,92563] ]
 
 [[input]]
 path = "tsumi_025_3.txt"
-ps3_regions = [ [91816,92563] ]
+ps3_regions = [[91639, 92563]]
 
+[[input]]
+path = "onik_002.txt"
+ps3_regions = [[20613, 21158]]
+
+[[input]]
+path = "onik_003.txt"
+ps3_regions = [[21286, 22154]]
+
+[[input]]
+path = "onik_004.txt"
+ps3_regions = [[22329, 22959]]
 
 [[input]]
 path = "onik_005.txt"
-ps3_regions = [[22955, 23546]]
+ps3_regions = [[22961, 23546]]
 
 [[input]]
 path = "onik_009.txt"
-ps3_regions = [[25674, 26311]]
+ps3_regions = [[25673, 26311]]
 
 #[[input]]
 #path = "tsumi_026.txt"
 #ps3_regions = [ [92565, 93391] ]
+
+[[input]]
+path = "onik_000.txt"
+ps3_regions = [[20012, 20056]]
+
+[[input]]
+path = "onik_001.txt"
+ps3_regions = [[20057, 20611]]
