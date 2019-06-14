@@ -56,8 +56,10 @@ namespace SuiMerger
                     // Try to load the subscript file
                     string subScriptPath = Path.Combine(scriptFolder, subScriptFileNameWithExt);
 
-                    // Add the lines from the sub-script
+                    // Add the lines from the sub-script, along with some markers so we can unmerge it later
+                    mergedScriptLines.Add($"//BEGIN_MERGED_SUBSCRIPT|{subScriptFileNameWithExt}|{subScriptFunctionName}");
                     mergedScriptLines.AddRange(GetScriptFunctionContent(subScriptPath, subScriptFunctionName));
+                    mergedScriptLines.Add($"//END_MERGED_SUBSCRIPT|{subScriptFileNameWithExt}|{subScriptFunctionName}");
                 }
             }
 
