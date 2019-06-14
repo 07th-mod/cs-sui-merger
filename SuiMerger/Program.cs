@@ -462,10 +462,20 @@ namespace SuiMerger
             //TODO: scan for files, generate dummy input infos for files which haven't got specified regions.
             //ProcessSingleFile should then attempt to find the correct regions for those files and dump to toml file
             //TODO: clean up console output
+            Regex emptyMainRegex = new Regex(@"void\s*main\(\s*\)\s*{\s*}");
+
             HashSet<string> filePathsToGetStartEnd = new HashSet<string>(); //note: this path includes the input folder name eg "input/test.txt"
-            foreach (string fileInInputFolder in Directory.EnumerateFiles(config.input_folder, "*.*", SearchOption.AllDirectories))
+            foreach (string pathOfPossibleScript in Directory.EnumerateFiles(config.input_folder, "*.*", SearchOption.AllDirectories))
             {
-                filePathsToGetStartEnd.Add(Path.GetFullPath(fileInInputFolder));
+                // Skip scripts which have an empty main file - these are sub scripts
+                string fileText = File.ReadAllText(pathOfPossibleScript);
+                if(emptyMainRegex.Match(fileText).Success)
+                {
+                    Console.WriteLine($"Skipping script {pathOfPossibleScript} as it looks like a Sub-Script");
+                    continue;
+                }
+
+                filePathsToGetStartEnd.Add(Path.GetFullPath(pathOfPossibleScript));
             }
 
             foreach (InputInfo inputInfo in config.input)
