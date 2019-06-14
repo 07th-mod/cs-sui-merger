@@ -91,6 +91,7 @@
     <Compile Include="FileConcatenator.cs" />
     <Compile Include="FileTranslator.cs" />
     <Compile Include="FileUtils.cs" />
+    <Compile Include="ForkingScriptMerger.cs" />
     <Compile Include="HintParser.cs" />
     <Compile Include="InOrderLevenshteinMatcher.cs" />
     <Compile Include="MangaGamerScriptReader.cs" />
