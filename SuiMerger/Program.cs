@@ -459,23 +459,38 @@ namespace SuiMerger
             //begin processing
             List<PS3DialogueInstruction> pS3DialogueInstructionsPreFilter = PS3XMLReader.GetPS3DialoguesFromXML(untranslatedXMLFilePath);
 
-            //TODO: scan for files, generate dummy input infos for files which haven't got specified regions.
-            //ProcessSingleFile should then attempt to find the correct regions for those files and dump to toml file
-            //TODO: clean up console output
+            // >>>> Merge ModCallScriptSection: pre-process each file in the pre-input folder, ignoring sub scripts
+            // >>>> this inserts the subscripts inline into the script
             Regex emptyMainRegex = new Regex(@"void\s*main\(\s*\)\s*{\s*}");
 
-            HashSet<string> filePathsToGetStartEnd = new HashSet<string>(); //note: this path includes the input folder name eg "input/test.txt"
-            foreach (string pathOfPossibleScript in Directory.EnumerateFiles(config.input_folder, "*.*", SearchOption.AllDirectories))
+            foreach (string pathOfPossibleScript in Directory.EnumerateFiles(config.pre_input_folder, "*.*", SearchOption.AllDirectories))
             {
                 // Skip scripts which have an empty main file - these are sub scripts
                 string fileText = File.ReadAllText(pathOfPossibleScript);
-                if(emptyMainRegex.Match(fileText).Success)
+                if (emptyMainRegex.Match(fileText).Success)
                 {
                     Console.WriteLine($"Skipping script {pathOfPossibleScript} as it looks like a Sub-Script");
                     continue;
                 }
 
-                filePathsToGetStartEnd.Add(Path.GetFullPath(pathOfPossibleScript));
+                string filename = Path.GetFileName(pathOfPossibleScript);
+
+                // >>>> Merge ModCallScriptSection: Before loading the manga gamer dialog, copy in any ModCallScriptSection(...) calls. This will be undone at a later stage
+                ForkingScriptMerger forkingScriptMerger = new ForkingScriptMerger();
+                List<string> mergedScriptLines = forkingScriptMerger.MergeForkedScript(config.pre_input_folder, filename);
+
+
+                File.WriteAllLines(Path.Combine(config.input_folder, filename), mergedScriptLines);
+            }
+
+
+            //TODO: scan for files, generate dummy input infos for files which haven't got specified regions.
+            //ProcessSingleFile should then attempt to find the correct regions for those files and dump to toml file
+            //TODO: clean up console output
+            HashSet<string> filePathsToGetStartEnd = new HashSet<string>(); //note: this path includes the input folder name eg "input/test.txt"
+            foreach (string fileInInputFolder in Directory.EnumerateFiles(config.input_folder, "*.*", SearchOption.AllDirectories))
+            {
+                filePathsToGetStartEnd.Add(Path.GetFullPath(fileInInputFolder));
             }
 
             foreach (InputInfo inputInfo in config.input)
