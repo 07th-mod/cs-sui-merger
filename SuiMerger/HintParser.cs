@@ -10,7 +10,7 @@ namespace SuiMerger
 {
     /// <summary>
     /// This class is used to deserialize .toml file using the 'Nett' library.
-    /// See the 'conf.toml' example file.
+    /// See the 'conf.toml' example file for more documentation on each variable.
     /// </summary>
     class MergerConfiguration
     {
@@ -19,6 +19,8 @@ namespace SuiMerger
 
         public string temp_folder { get; set; }
         public string output_folder { get; set; }
+
+        public string pre_input_folder { get; set; }
         public string input_folder { get; set; }
 
         //ps3 config

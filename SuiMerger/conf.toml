@@ -17,6 +17,9 @@ trim_after_diff = true
 # folder to put the output mg scripts with merged ps3 instructions
 output_folder = "output"
 
+# folder to put the raw scripts. These will be transformed into non-forked scripts and placed in the "input_folder"
+pre_input_folder = "pre_input"
+
 # if xml_path is a folder, will concatenate all the xml files in the folder
 # into one file (will use the last part of filename for order)
 # eg *_0.xml, *_1.xml ... *_42.xml will be concatenated in that order
