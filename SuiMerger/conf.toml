@@ -79,3 +79,31 @@ ps3_regions = [[20012, 20056]]
 [[input]]
 path = "onik_001.txt"
 ps3_regions = [[20057, 20611]]
+
+[[input]]
+path = "_tsum_001.txt"
+ps3_regions = [[83315, 83927]]
+
+[[input]]
+path = "_tsum_002_1.txt"
+ps3_regions = [[83929, 83983]]
+
+[[input]]
+path = "_tsum_002_2.txt"
+ps3_regions = [[83984, 84101]]
+
+[[input]]
+path = "_tsum_003_1.txt"
+ps3_regions = [[84103, 84148]]
+
+[[input]]
+path = "_tsum_003_2.txt"
+ps3_regions = [[84150, 84266]]
+
+[[input]]
+path = "_tsum_003_3.txt"
+ps3_regions = [[84267, 84449]]
+
+[[input]]
+path = "_tsum_003_4.txt"
+ps3_regions = [[84450, 84535]] #Not too sure about the start of this match!
