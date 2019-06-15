@@ -40,17 +40,18 @@ namespace SuiMerger
         }
 
         /// <summary>
-        /// Writes a list of strings to file, but uses Config.newline as the newline separator
+        /// Writes a list of strings to file, using a custom line separator
         /// </summary>
         /// <param name="outputPath"></param>
         /// <param name="lines"></param>
-        public static void WriteAllLinesCustomNewline(string outputPath, List<string> lines)
+        public static void WriteAllLinesCustomNewline(string outputPath, IEnumerable<string> lines, string lineSeparator)
         {
             using (StreamWriter outputFile = FileUtils.CreateDirectoriesAndOpen(outputPath, FileMode.Create))
             {
                 foreach (string line in lines)
                 {
-                    outputFile.WriteLine(line);
+                    outputFile.Write(line);
+                    outputFile.Write(lineSeparator);
                 }
             }
         }
@@ -66,6 +67,11 @@ namespace SuiMerger
             }
             Uri folderUri = new Uri(folder);
             return Uri.UnescapeDataString(folderUri.MakeRelativeUri(pathUri).ToString().Replace('/', Path.DirectorySeparatorChar));
+        }
+
+        public static void ChangeFileLineEndings(string filePath, string lineEnding)
+        {
+            FileUtils.WriteAllLinesCustomNewline(filePath, File.ReadAllLines(filePath), lineEnding);
         }
     }
 }

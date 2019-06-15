@@ -75,7 +75,7 @@ namespace SuiMerger.MergedScriptPostProcessing
             }
 
             // --------- Finally, write the output to file. ---------
-            FileUtils.WriteAllLinesCustomNewline(outputPath, outputStage2);
+            File.WriteAllLines(outputPath, outputStage2);
         }
 
         private static int PS3TimeConversion(int ps3Time)
