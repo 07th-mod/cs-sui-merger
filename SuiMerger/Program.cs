@@ -391,8 +391,11 @@ namespace SuiMerger
                 Console.WriteLine("[[input]]");
                 Console.WriteLine($@"path = ""{mgInfo.path}""");
                 Console.WriteLine($"ps3_regions = [[{result_start_id}, {result_end_id}]]");
+                Console.WriteLine("No output will be generated for this script until the program is run again.");
+                Console.WriteLine("Press ENTER to move to the next script...");
 
                 Console.ReadKey();
+                return;
             }
 
             //Diff the dialogue
