@@ -12,22 +12,17 @@ namespace SuiMerger
     {
         Regex modCallScriptSectionRegex = new Regex(@"ModCallScriptSection\(\s*""([^""]+)""\s*,\s*""([^""]+)""", RegexOptions.IgnoreCase);
 
-        public List<string> MergeForkedScript(string scriptFolder, string fileName)
+        public List<string> MergeForkedScript(string scriptFolder, string fileName, bool useUncencoredVersion)
         {
             List<string> mergedScriptLines = new List<string>();
 
             string scriptPath = Path.Combine(scriptFolder, fileName);
             string[] allLines = File.ReadAllLines(scriptPath);
 
-            bool gotVoiceMatchingStartComment  = false;
             foreach (string line in allLines)
             {
                 // Add the line from the original script
                 mergedScriptLines.Add(line);
-                if(line.Trim() == "//VoiceMatching")
-                {
-                    gotVoiceMatchingStartComment = true;
-                }
 
                 //TODO: only want to insert the highest level censor script section!!!
                 bool gotBasicMatch = line.Contains("ModCallScriptSection");
@@ -43,24 +38,31 @@ namespace SuiMerger
                     continue;
                 }
 
+                if(!line.Contains(">=") && !line.Contains("<="))
+                {
+                    throw new Exception("Line does not have a comparison operator - can't determine censoredness");
+                }
+
+                bool isUncensoredVersion = line.Contains(">=");
+                if(useUncencoredVersion != isUncensoredVersion)
+                {
+                    continue;
+                }
+
                 // We want to take the first ModCallSCriptSection of each chunk, whic is delimited by
                 //  //VoiceMatching and //VoiceMAtchingEnd
                 // To do this, only allow voice matching once per each "//VoiceMatching" delimiter
-                if (gotVoiceMatchingStartComment)
-                {
-                    gotVoiceMatchingStartComment = false;
-                    string subScriptFileNameWithExt = match.Groups[1].Value + ".txt";
-                    string subScriptFunctionName = match.Groups[2].Value;
-                    Console.WriteLine($"{subScriptFileNameWithExt} -> {subScriptFunctionName}");
+                string subScriptFileNameWithExt = match.Groups[1].Value + ".txt";
+                string subScriptFunctionName = match.Groups[2].Value;
+                Console.WriteLine($"{subScriptFileNameWithExt} -> {subScriptFunctionName}");
 
-                    // Try to load the subscript file
-                    string subScriptPath = Path.Combine(scriptFolder, subScriptFileNameWithExt);
+                // Try to load the subscript file
+                string subScriptPath = Path.Combine(scriptFolder, subScriptFileNameWithExt);
 
-                    // Add the lines from the sub-script, along with some markers so we can unmerge it later
-                    mergedScriptLines.Add($"//BEGIN_MERGED_SUBSCRIPT|{subScriptFileNameWithExt}|{subScriptFunctionName}");
-                    mergedScriptLines.AddRange(GetScriptFunctionContent(subScriptPath, subScriptFunctionName));
-                    mergedScriptLines.Add($"//END_MERGED_SUBSCRIPT|{subScriptFileNameWithExt}|{subScriptFunctionName}");
-                }
+                // Add the lines from the sub-script, along with some markers so we can unmerge it later
+                mergedScriptLines.Add($"//BEGIN_MERGED_SUBSCRIPT|{subScriptFileNameWithExt}|{subScriptFunctionName}");
+                mergedScriptLines.AddRange(GetScriptFunctionContent(subScriptPath, subScriptFunctionName));
+                mergedScriptLines.Add($"//END_MERGED_SUBSCRIPT|{subScriptFileNameWithExt}|{subScriptFunctionName}");
             }
 
             return mergedScriptLines;

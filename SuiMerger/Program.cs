@@ -480,7 +480,7 @@ namespace SuiMerger
 
                 // >>>> Merge ModCallScriptSection: Before loading the manga gamer dialog, copy in any ModCallScriptSection(...) calls. This will be undone at a later stage
                 ForkingScriptMerger forkingScriptMerger = new ForkingScriptMerger();
-                List<string> mergedScriptLines = forkingScriptMerger.MergeForkedScript(config.pre_input_folder, filename);
+                List<string> mergedScriptLines = forkingScriptMerger.MergeForkedScript(config.pre_input_folder, filename, true);
 
 
                 File.WriteAllLines(Path.Combine(config.input_folder, filename), mergedScriptLines);
