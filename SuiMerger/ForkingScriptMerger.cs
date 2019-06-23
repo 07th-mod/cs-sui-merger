@@ -88,7 +88,8 @@ namespace SuiMerger
             int lastContentLine = getLastFunctionContentLine(subScriptLines, firstContentLine, debug_functionName: functionName, debug_subScriptPath: subScriptPath);
 
             // Copy the content lines in the file
-            int contentLength = lastContentLine - firstContentLine;
+            // Since this is an inclusive range, need to add 1 to get correct size.
+            int contentLength = lastContentLine - firstContentLine + 1;
             string[] content = new string[contentLength];
             Array.Copy(subScriptLines, firstContentLine, content, 0, contentLength);
 
