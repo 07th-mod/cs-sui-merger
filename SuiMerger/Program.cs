@@ -514,6 +514,9 @@ namespace SuiMerger
                 }
             }
 
+            //Unmerge all the forked scripts (zonik_....txt)
+            ForkingScriptMerger.UnMergeForkedScripts(config.pre_input_folder, config.output_folder, forkedScriptContentToMergeList);
+
             //Save to a file so it can be copied into toml file (if already correct)
             using (StreamWriter sw = FileUtils.CreateDirectoriesAndOpen(config.guessed_matches, FileMode.Create))
             {

@@ -243,8 +243,49 @@ namespace SuiMerger
             return forkedScriptContentToMergeList;
         }
 
+        public static void UnMergeForkedScripts(string inputSubScriptFolder, string outputFolder, List<PartialSubScriptToMerge> partialSubScriptToMergeList)
+        {
+            Dictionary<string, List<string>> scriptToScriptContentDict = new Dictionary<string, List<string>>();
 
-            return content;
+            //Load all the forked scripts into memory, accessible by scriptName (force lowercase)
+            foreach(var partialSubScript in partialSubScriptToMergeList)
+            {
+                string scriptPath = Path.Combine(inputSubScriptFolder, partialSubScript.scriptName);
+                string lowercaseScriptFileName = partialSubScript.scriptName.ToLower();
+                
+                // Check if already loaded - if so skip this item
+                if(scriptToScriptContentDict.ContainsKey(lowercaseScriptFileName))
+                {
+                    continue;
+                }
+
+                if(!File.Exists(scriptPath))
+                {
+                    throw new Exception($"Couldn't find sub-script {scriptPath}");
+                }
+
+                scriptToScriptContentDict.Add(lowercaseScriptFileName, File.ReadAllLines(scriptPath).ToList());
+            }
+
+            //For each forked script to merege:
+            //  newLines = do ReplaceScriptFunctionContent(IList<string> subScriptLines (from script name), string functionToReplace, IList<string> replacementContent)
+            //  replace that map entry with the newLines
+            foreach(var partialSubScript in partialSubScriptToMergeList)
+            {
+                scriptToScriptContentDict[partialSubScript.scriptName.ToLower()] = 
+                    ReplaceScriptFunctionContent(
+                        scriptToScriptContentDict[partialSubScript.scriptName.ToLower()], 
+                        partialSubScript.functionName, 
+                        partialSubScript.functionContent
+                    );
+            }
+
+            //Write out all the files to disk.
+            foreach (KeyValuePair<string, List<string>> kvp in scriptToScriptContentDict)
+            {
+                string scriptPath = Path.Combine(outputFolder, kvp.Key);
+                File.WriteAllLines(scriptPath, kvp.Value);
+            }
         }
 
     }
