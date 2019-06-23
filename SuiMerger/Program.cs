@@ -313,7 +313,7 @@ namespace SuiMerger
         /// <param name="config"></param>
         /// <param name="mgInfo"></param>
         /// <param name="guessedInputInfos"></param>
-        static void ProcessSingleFile(List<PS3DialogueInstruction> pS3DialogueInstructionsPreFilter, MergerConfiguration config, InputInfo mgInfo, List<InputInfo> guessedInputInfos)
+        static List<PartialSubScriptToMerge> ProcessSingleFile(List<PS3DialogueInstruction> pS3DialogueInstructionsPreFilter, MergerConfiguration config, InputInfo mgInfo, List<InputInfo> guessedInputInfos)
         {
             string fullPath = Path.Combine(config.input_folder, mgInfo.path);
             string pathNoExt = Path.GetFileNameWithoutExtension(fullPath);
@@ -395,7 +395,7 @@ namespace SuiMerger
                 Console.WriteLine("Press ENTER to move to the next script...");
 
                 Console.ReadKey();
-                return;
+                return new List<PartialSubScriptToMerge>();
             }
 
             //Diff the dialogue
@@ -417,8 +417,13 @@ namespace SuiMerger
             string mergedOutputPath = Path.Combine(config.output_folder, pathNoExt + "_merged.xml.txt");
             SaveMergedMGScript(alignmentPoints, mergedOutputPath, mg_leftovers);
 
+            // >>>> UnMerge ModCallScriptSection: Before using the results, we need to reverse the step we did earlier, by unmerging any merged files back into multiple files.
+
             //Use the inserted instructions
-            MergedScriptPostProcessing.PostProcessingMain.InsertMGLinesUsingPS3XML(mergedOutputPath, Path.Combine(config.output_folder, pathNoExt + "_OUTPUT.txt"), config);
+            string finalOutputWithMergedForkedScripts = Path.Combine(config.output_folder, pathNoExt + "_OUTPUT.txt");
+            MergedScriptPostProcessing.PostProcessingMain.InsertMGLinesUsingPS3XML(mergedOutputPath, finalOutputWithMergedForkedScripts, config);
+
+            return ForkingScriptMerger.GetForkedScriptContentFromMergedScript(config.pre_input_folder, finalOutputWithMergedForkedScripts);
         }
 
         //wrapper to allow 'pausing' of program but still garbage collect everything to force files to write-out
@@ -479,9 +484,7 @@ namespace SuiMerger
                 string filename = Path.GetFileName(pathOfPossibleScript);
 
                 // >>>> Merge ModCallScriptSection: Before loading the manga gamer dialog, copy in any ModCallScriptSection(...) calls. This will be undone at a later stage
-                ForkingScriptMerger forkingScriptMerger = new ForkingScriptMerger();
-                List<string> mergedScriptLines = forkingScriptMerger.MergeForkedScript(config.pre_input_folder, filename, true);
-
+                List<string> mergedScriptLines = ForkingScriptMerger.MergeForkedScript(config.pre_input_folder, filename, true);
 
                 File.WriteAllLines(Path.Combine(config.input_folder, filename), mergedScriptLines);
             }
@@ -496,6 +499,7 @@ namespace SuiMerger
                 filePathsToGetStartEnd.Add(Path.GetFullPath(fileInInputFolder));
             }
 
+            List<PartialSubScriptToMerge> forkedScriptContentToMergeList = new List<PartialSubScriptToMerge>();
             foreach (InputInfo inputInfo in config.input)
             {
                 string tomlInputFilePathNormalized = Path.GetFullPath(Path.Combine(config.input_folder, inputInfo.path));
@@ -504,7 +508,9 @@ namespace SuiMerger
                 {
                     Console.WriteLine($"\n[  TOML OK   ]: {tomlInputFilePathNormalized} found in config file with region {StringUtils.PrettyPrintListOfListToString(inputInfo.ps3_regions)}");
                     filePathsToGetStartEnd.Remove(tomlInputFilePathNormalized);
-                    ProcessSingleFile(pS3DialogueInstructionsPreFilter, config, inputInfo, new List<InputInfo>());
+                    forkedScriptContentToMergeList.AddRange(
+                        ProcessSingleFile(pS3DialogueInstructionsPreFilter, config, inputInfo, new List<InputInfo>())
+                    );
                 }
             }
 
