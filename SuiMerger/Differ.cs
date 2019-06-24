@@ -111,6 +111,30 @@ namespace SuiMerger
             return output;
         }
 
+        public static List<string> RunDiffToolNoHeader(string inputPathA, string inputPathB)
+        {
+            string resultString = RunDiffTool(inputPathA, inputPathB);
+
+            List<string> retval = new List<string>();
+            using (StringReader reader = new StringReader(resultString))
+            {
+                string line;
+                //skip the header information
+                while ((line = reader.ReadLine()) != null)
+                {
+                    if (line[0] == '@')
+                        break;
+                }
+
+                while ((line = reader.ReadLine()) != null)
+                {
+                    retval.Add(line);
+                }
+            }
+
+            return retval;
+        }
+
         /// <summary>
         /// This function writes out a list of dialogue, but performs preprocesses all the dialogue so it's nicely formatted for the diff
         /// NOTE: this function adds a newline to the end of each string.

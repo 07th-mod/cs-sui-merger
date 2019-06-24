@@ -286,6 +286,128 @@ namespace SuiMerger
                 string scriptPath = Path.Combine(outputFolder, kvp.Key);
                 File.WriteAllLines(scriptPath, kvp.Value);
             }
+
+            // Port changes made to the uncensored scripts
+            foreach (KeyValuePair<string, List<string>> kvp in scriptToScriptContentDict)
+            {
+                string moreCensoredFileName = kvp.Key;
+                string lessCensoredFileName = moreCensoredFileName.Replace("_vm00", "_vm0x");
+                if(moreCensoredFileName == lessCensoredFileName)
+                {
+                    throw new Exception("Couldn't determine name of less censored sub script");
+                }
+
+                string originalScriptPath = Path.Combine(inputSubScriptFolder, moreCensoredFileName);
+                string modifiedScriptPath = Path.Combine(outputFolder, moreCensoredFileName);
+
+                string subScriptToPortPath = Path.Combine(inputSubScriptFolder, lessCensoredFileName);
+                string outputScriptPath = Path.Combine(outputFolder, lessCensoredFileName);
+
+                CopyChangesFromOneSubscriptToAnother(originalScriptPath, modifiedScriptPath, subScriptToPortPath, outputScriptPath);
+            }
+        }
+
+        public static void CopyChangesFromOneSubscriptToAnother(string originalSubScriptPath, string modifiedSubScriptPath, string subScriptToPortToPath, string outputScriptPath)
+        {
+            const string marker = "|||ADDED_LINE";
+
+            //Do a diff between "originalSubScriptPath" and "modifedSubScriptPath". Lines with a "+" are added lines.
+            //Convert lines with a "+" to "|||ADDED_LINE" (if there are any '-' lines it is an error). Trim the first character of every line of the diff
+            List<string> origToModifiedDiff = Differ.RunDiffToolNoHeader(originalSubScriptPath, modifiedSubScriptPath);
+
+            List<string> fixedLines = new List<string>();
+            foreach (string line in origToModifiedDiff)
+            {
+                char c = line[0];
+                string restOfLine = line.Substring(1);
+                if(c == '+')
+                {
+                    fixedLines.Add(marker + "+" + restOfLine);
+                }
+                else if(c == '-')
+                {
+                    fixedLines.Add(marker + "-" + restOfLine);
+                }
+                else if(c == ' ')
+                {
+                    fixedLines.Add(restOfLine);
+                }
+                else
+                {
+                    throw new Exception("Diff resulted in a removed or other type of line!");
+                }
+            }
+
+            //Write out the diff to a temp file so it can be consumed by the differ
+            string tempFilePath = Path.GetTempFileName();
+            try
+            {
+                File.WriteAllLines(tempFilePath, fixedLines);
+
+                //Do a diff that takes you FROM the less censored script TO the more censored script.
+                List<string> modifiedToSubScriptToPortDiff = Differ.RunDiffToolNoHeader(subScriptToPortToPath, tempFilePath);
+                List<string> outputScript = new List<string>();
+
+                //Keep all " "  and "-" lines. Throw away any "+" lines, unless they start with "|||ADDED_LINE". Save to outputScriptPath
+                foreach (string line in modifiedToSubScriptToPortDiff)
+                {
+                    char c = line[0];
+                    string restOfLine = line.Substring(1);
+
+                    if(restOfLine.StartsWith(marker))
+                    {
+                        // If a line is marked, apply the changes in the payload (don't obey the outer level change type)
+                        char payloadType = restOfLine[marker.Length];
+                        string payload = restOfLine.Substring(marker.Length + 1);
+
+                        if (payloadType == '+')
+                        {
+                            //new line to be added
+                            outputScript.Add(payload); //"SHOULD ADD:" + payload);
+                        }
+                        else if(payloadType == '-')
+                        {
+                            if (outputScript[outputScript.Count - 1] == payload)
+                            {
+                                outputScript.RemoveAt(outputScript.Count - 1);
+                            }
+                            else
+                            {
+                                throw new Exception("Couldn't port change from censored to uncensored script?");
+                            }
+
+                            //previous line to be removed if identical
+                            //outputScript.Add("REMOVED:" + payload);
+                        }
+                        else
+                        {
+                            throw new Exception($"Unexpected payload diff type for line {line}");
+                        }
+                    }
+                    else
+                    {
+                        // If a line is not marked, "undo" the changes by keeping original
+                        if(c == '+')
+                        {
+                            //Console.WriteLine($"Throwing away {line}");
+                        }
+                        else if(c == '-' || c == ' ')
+                        {
+                            outputScript.Add(restOfLine);
+                        }
+                        else
+                        {
+                            throw new Exception($"Unexpected diff type for line {line}");
+                        }
+                    }
+                }
+
+                File.WriteAllLines(outputScriptPath, outputScript);
+            }
+            finally
+            {
+                File.Delete(tempFilePath);
+            }
         }
 
     }
