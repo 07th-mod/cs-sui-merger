@@ -136,6 +136,11 @@ namespace SuiMerger.MergedScriptPostProcessing
                             {
                                 instructionsList.Add(new MGPlayBGM(0, sfx_file, true));
                             }
+                            else if (ps3_sfx_channel == 5)
+                            {
+                                //TODO: figure out if this is correct behavior. Channel 5 only occurs a handful of times in the ps3 script
+                                instructionsList.Add(new MGPlayBGM(4, sfx_file, true));
+                            }
                             else
                             {
                                 throw new Exception($"A ps3 sfx was found which is not on channel 4 or 7 (sorry, no debug output for this, please add it)");
@@ -157,11 +162,19 @@ namespace SuiMerger.MergedScriptPostProcessing
                         {
                             instructionsList.Add(new MGFadeOutBGM(0, durationFade, true));
                         }
+                        else if (fadeChannel == 5)
+                        {
+                            instructionsList.Add(new MGFadeOutBGM(4, durationFade, true));
+                        }
+                        else if (fadeChannel == 0)
+                        {
+                            Console.WriteLine($"Ignoring channel 0 fade - these are non-looping SFX playback which don't need a fade.");
+                        }
                         else
                         {
-                            Console.WriteLine($"WARNING: unknown PS3 channel fade, chan {fadeChannel}. Fade instruction ignored");
+                            throw new Exception($"WARNING: unknown PS3 channel fade, chan {fadeChannel}");
                         }
-                        
+
                         break;
 
                 }
