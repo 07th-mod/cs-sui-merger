@@ -420,7 +420,7 @@ namespace SuiMerger
             // >>>> UnMerge ModCallScriptSection: Before using the results, we need to reverse the step we did earlier, by unmerging any merged files back into multiple files.
 
             //Use the inserted instructions
-            string finalOutputWithMergedForkedScripts = Path.Combine(config.output_folder, pathNoExt + "_OUTPUT.txt");
+            string finalOutputWithMergedForkedScripts = Path.Combine(config.output_folder, pathNoExt + ".txt");
             MergedScriptPostProcessing.PostProcessingMain.InsertMGLinesUsingPS3XML(mergedOutputPath, finalOutputWithMergedForkedScripts, config);
 
             return ForkingScriptMerger.GetForkedScriptContentFromMergedScript(config.pre_input_folder, finalOutputWithMergedForkedScripts);
