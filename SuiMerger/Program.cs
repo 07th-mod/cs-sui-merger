@@ -423,7 +423,11 @@ namespace SuiMerger
             string finalOutputWithMergedForkedScripts = Path.Combine(config.output_folder, pathNoExt + ".txt");
             MergedScriptPostProcessing.PostProcessingMain.InsertMGLinesUsingPS3XML(mergedOutputPath, finalOutputWithMergedForkedScripts, config);
 
-            return ForkingScriptMerger.GetForkedScriptContentFromMergedScript(config.pre_input_folder, finalOutputWithMergedForkedScripts);
+            List<PartialSubScriptToMerge> partialSubScriptsToMerge = ForkingScriptMerger.GetForkedScriptContentFromMergedScript(config.pre_input_folder, finalOutputWithMergedForkedScripts);
+
+            ForkingScriptMerger.RemoveForkedScriptContentFromMergedScript(finalOutputWithMergedForkedScripts);
+
+            return partialSubScriptsToMerge;
         }
 
         //wrapper to allow 'pausing' of program but still garbage collect everything to force files to write-out

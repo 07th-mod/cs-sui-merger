@@ -243,6 +243,37 @@ namespace SuiMerger
             return forkedScriptContentToMergeList;
         }
 
+        public static void RemoveForkedScriptContentFromMergedScript(string mergedScriptPath)
+        {
+            string[] mergedScriptLines = File.ReadAllLines(mergedScriptPath);
+
+            using (System.IO.StreamWriter file = new System.IO.StreamWriter(mergedScriptPath))
+            {
+                bool inSubScriptFunction = false;
+                foreach (string line in mergedScriptLines)
+                {
+                    Match m = mergedSectionHeaderRegex.Match(line);
+                    if (m.Success)
+                    {
+                        inSubScriptFunction = true;
+                    }
+                    else if (line.Contains("//END_MERGED_SUBSCRIPT"))
+                    {
+                        if (!inSubScriptFunction)
+                        {
+                            throw new Exception("Got END_MERGED_SUBSCRIPT but no BEGIN_MERGED_SUBSCRIPT");
+                        }
+
+                        inSubScriptFunction = false;
+                    }
+                    else if (!inSubScriptFunction)
+                    {
+                        file.WriteLine(line);
+                    }
+                }
+            }
+        }
+
         public static void UnMergeForkedScripts(string inputSubScriptFolder, string outputFolder, List<PartialSubScriptToMerge> partialSubScriptToMergeList)
         {
             Dictionary<string, List<string>> scriptToScriptContentDict = new Dictionary<string, List<string>>();
