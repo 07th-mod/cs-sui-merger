@@ -93,6 +93,194 @@ namespace SuiMerger.MergedScriptPostProcessing
         static Regex playBGMMusicRegex = new Regex(@"\s*PlayBGM\(([^\)]+)\)", RegexOptions.IgnoreCase);
         static Regex playSERegex = new Regex(@"\s*PlaySE\(([^\)]+)\)", RegexOptions.IgnoreCase);
 
+        public static void PrintChunk(List<MangaGamerInstruction> instructions)
+        {
+            Console.WriteLine("\n-------------- Begin new section --------------");
+            foreach (MangaGamerInstruction mgInstruction in instructions)
+            {
+                Console.Write(mgInstruction.IsPS3() ? "PS3 - " : "MG  - ");
+                switch (mgInstruction)
+                {
+                    case MGPlayBGM playBGM:
+                        Console.Write($"Found BGM play: {playBGM.GetInstruction()}");
+                        break;
+
+                    case MGFadeOutBGM fadeBGM:
+                        Console.Write($"Found BGM fade: {fadeBGM.GetInstruction()}");
+                        break;
+
+                    case MGPlaySE playSE:
+                        Console.Write($"Found SE play: {playSE.GetInstruction()}");
+                        break;
+
+                    default:
+                        Console.Write($"Found Generic instruction: {mgInstruction.GetInstruction()}");
+                        break;
+                }
+                Console.WriteLine();
+            }
+        }
+
+        public static List<MangaGamerInstruction> HandleChunk(List<MangaGamerInstruction> instructions)
+        {
+            bool gotps3 = false;
+            foreach(MangaGamerInstruction ins in instructions)
+            {
+                if(ins.IsPS3())
+                {
+                    gotps3 = true;
+                }
+            }
+
+            if (gotps3)
+            {
+                PrintChunk(instructions);
+            }
+            else
+            {
+                return instructions;
+            }
+
+            //handle BGM: if num BGM match, replace in order, otherwise error
+            //handle SE: if num SE match, replacece in order, otherwise error
+            //handle fade: 
+            // - if num fade match, replace in order.
+            // - otherwise, put fade before the first original BGM in the block.
+            // - otherwise, error
+
+            //record original BGM locations
+            //record original SE locations
+            //record original fade locations
+
+            //make list of new BGM, SE, fade
+
+            List<MGPlayBGM> ps3PlayBGMInstructions = new List<MGPlayBGM>();
+            int numMGBGM = 0;
+
+            List<MGPlaySE> ps3PlaySEInstructions = new List<MGPlaySE>();
+            int numMGSE = 0;
+
+            List<MGFadeOutBGM> ps3FadeInstructions = new List<MGFadeOutBGM>();
+            int numMGFade = 0;
+
+            foreach (MangaGamerInstruction inst in instructions)
+            {
+                switch (inst)
+                {
+                    case MGPlayBGM playBGM:
+                        if(inst.IsPS3())
+                        {
+                            ps3PlayBGMInstructions.Add(playBGM);
+                        }
+                        else
+                        {
+                            numMGBGM += 1;
+                        }
+                        break;
+
+                    case MGFadeOutBGM fadeBGM:
+                        if (inst.IsPS3())
+                        {
+                            ps3FadeInstructions.Add(fadeBGM);
+                        }
+                        else
+                        {
+                            numMGFade += 1;
+                        }
+                        break;
+
+                    case MGPlaySE playSE:
+                        if (inst.IsPS3())
+                        {
+                            ps3PlaySEInstructions.Add(playSE);
+                        }
+                        else
+                        {
+                            numMGSE += 1;
+                        }
+                        break;
+
+                    default:
+                        break;
+                }
+            }
+
+
+            //determine whether OK by counting number of each(except for fade)
+            bool bgmOK = ps3PlayBGMInstructions.Count == numMGBGM;
+            bool seOK = ps3PlaySEInstructions.Count == numMGSE;
+            bool fadeOK = ps3FadeInstructions.Count == numMGFade;
+
+            Console.WriteLine("BGM: " + (bgmOK ? "match" : "NO MATCH"));
+            Console.WriteLine("SE: " + (seOK ? "match" : "NO MATCH"));
+            Console.WriteLine("FADE: " + (fadeOK ? "match" : "NO MATCH"));
+
+            //get only PS3/mangagamer instructions
+
+            //iterate over all instructions
+            List<MangaGamerInstruction> output = new List<MangaGamerInstruction>(); 
+            foreach(MangaGamerInstruction inst in instructions.Where(x => !x.IsPS3()))
+            {
+                output.Add(inst);
+
+                switch (inst)
+                {
+                    case MGPlayBGM playBGM:
+                        if (!fadeOK && ps3FadeInstructions.Count > 0)
+                        {
+                            output.AddRange(ps3FadeInstructions);
+                            ps3FadeInstructions.Clear();
+                        }
+
+                        if (bgmOK)
+                        {
+                            output.Add(ps3PlayBGMInstructions[0]);
+                            ps3PlayBGMInstructions.RemoveAt(0);
+                        }
+                        break;
+
+                    case MGPlaySE playSE:
+                        if (seOK)
+                        {
+                            output.Add(ps3PlaySEInstructions[0]);
+                            ps3PlaySEInstructions.RemoveAt(0);
+                        }
+                        break;
+
+
+                    case MGFadeOutBGM fadeBGM:
+                        if (fadeOK)
+                        {
+                            output.Add(ps3FadeInstructions[0]);
+                            ps3FadeInstructions.RemoveAt(0);
+                        }
+                        else if(ps3FadeInstructions.Count > 0)
+                        {
+                            output.AddRange(ps3FadeInstructions);
+                            ps3FadeInstructions.Clear();
+                        }
+                        break;
+
+                    default:
+                        break;
+                }
+            }
+
+            //TODO: should determine "OK" ness by if any instructions still remain in each stack
+
+            //if bgm not OK, output a comment error in instructions
+            if (ps3PlayBGMInstructions.Count != 0 || ps3PlaySEInstructions.Count != 0 || ps3FadeInstructions.Count != 0)
+            {
+                output.Add(new GenericInstruction("//Failed to insert some PS3 instruction!", false));
+                output.AddRange(ps3PlayBGMInstructions);
+                output.AddRange(ps3PlaySEInstructions);
+                output.AddRange(ps3FadeInstructions);
+                output.Add(new GenericInstruction("//End failed instructions", false));
+            }
+
+            return output;
+        }
+
         public static void InsertMGLinesUsingPS3XML(string mergedMGScriptPath, string outputPath, MergerConfiguration configuration)
         {
             const bool USE_OLD_METHOD_FOR_INSERT_BGM = false; 
@@ -105,23 +293,34 @@ namespace SuiMerger.MergedScriptPostProcessing
 
             // --------- Perform stage 1 - this converts the raw merged script into a list of MangaGamerInstructions --------- 
             //Iterate over the the Manga Gamer chunks and the PS3 XML Instructions Chunks of the merged script
+            int debug_i = 0;
             List<MangaGamerInstruction> outputStage1 = new List<MangaGamerInstruction>();
+
+
+            List<MangaGamerInstruction> workingChunk = new List<MangaGamerInstruction>();
             foreach (var chunk in PS3XMLChunkFinder.GetAllChunksFromMergedScript(mergedMGScriptPath))
             {
                 if(chunk.isPS3Chunk)
                 {
                     //PS3 XML reader doesn't care about newlines, so just join each line directly to next line
-                    HandlePS3Chunk(String.Join("", chunk.lines), outputStage1, bgmChannelNumber);
+                    HandlePS3Chunk(String.Join("", chunk.lines), workingChunk, bgmChannelNumber);
+
+                    outputStage1.AddRange(HandleChunk(workingChunk));
+                    workingChunk = new List<MangaGamerInstruction>();
                 }
                 else
                 {
                     //handle a mangagamer chunk
                     foreach (string mgScriptLine in chunk.lines)
                     {
-                        outputStage1.Add(ParseMangaGamerInstruction(mgScriptLine, false));
+                        workingChunk.Add(ParseMangaGamerInstruction(mgScriptLine, false));
                     }
                 }
             }
+
+            //If there are any leftovers (probably just mangagamer original instructions), just add them to the output.
+            outputStage1.AddRange(workingChunk);
+
 
             // --------- Perform stage 2 filtering to 'tidy up' the script ---------
             //This section runs filters after all the other filters have run.
