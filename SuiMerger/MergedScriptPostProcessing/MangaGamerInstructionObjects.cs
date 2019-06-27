@@ -32,10 +32,18 @@ namespace SuiMerger.MergedScriptPostProcessing
     /// </summary>
     class MGPlaySE : MangaGamerInstruction
     {
-        readonly int channel;
-        readonly string filename; //filename does not include file extension
-        readonly int volume;
-        readonly int panning;
+        public readonly int channel;
+        public readonly string filename; //filename does not include file extension
+        public readonly int volume;
+        public readonly int panning;
+
+        public MGPlaySE(int channel, string filename, int volume, int panning, bool isPS3) : base(isPS3, false)
+        {
+            this.channel = channel;   //game scripts seem to use channel 3 for playing sound effects
+            this.filename = filename;
+            this.volume = volume;     //default volume - not sure what ranges it is
+            this.panning = panning;   //default panning - not sure what ranges it is from-to?
+        }
 
         public MGPlaySE(int channel, string filename, bool isPS3) : base(isPS3, false)
         {
@@ -59,18 +67,21 @@ namespace SuiMerger.MergedScriptPostProcessing
 
     class MGFadeOutBGM : MangaGamerInstruction
     {
-        readonly int channel;
-        readonly int fadeTime;
+        public readonly int channel;
+        public readonly int fadeTime;
+        public readonly bool unkBool;
 
-        public MGFadeOutBGM(int channel, int fadeTime, bool isPS3) : base(isPS3, false)
+        public MGFadeOutBGM(int channel, int fadeTime, bool unkBool, bool isPS3) : base(isPS3, false)
         {
             this.channel = channel;
             this.fadeTime = fadeTime;
+            this.unkBool = unkBool;
         }
 
         public override string GetInstruction()
         {
-            return $"FadeOutBGM( {channel}, {fadeTime}, FALSE );";
+            string boolString = unkBool ? "TRUE" : "FALSE";
+            return $"FadeOutBGM( {channel}, {fadeTime}, {boolString} );";
         }
 
         public override string GetInstructionStandalone()
@@ -81,19 +92,31 @@ namespace SuiMerger.MergedScriptPostProcessing
 
     class MGPlayBGM : MangaGamerInstruction
     {
-        readonly int channel;
-        readonly string bgmFileName;
+        public readonly int channel;
+        public readonly string bgmFileName;
+        public readonly int pan;
+        public readonly int unk;
+
+        public MGPlayBGM(int channel, string bgmFileName, int volume, int unk, bool isPS3) : base(isPS3, false)
+        {
+            this.channel = channel;
+            this.bgmFileName = bgmFileName;
+            this.pan = volume;
+            this.unk = unk;
+        }
 
         public MGPlayBGM(int channel, string bgmFileName, bool isPS3) : base(isPS3, false)
         {
             this.channel = channel;
             this.bgmFileName = bgmFileName;
+            this.pan = 128;
+            this.unk = 0;
         }
 
         public override string GetInstruction()
         {
             string ps3Prefix = IsPS3() ? "ps3/" : String.Empty;
-            return $"PlayBGM( {channel}, \"{ps3Prefix}{bgmFileName}\", 128, 0 );";
+            return $"PlayBGM( {channel}, \"{ps3Prefix}{bgmFileName}\", {pan}, {unk} );";
         }
 
         public override string GetInstructionStandalone()

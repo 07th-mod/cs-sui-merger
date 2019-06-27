@@ -11,12 +11,87 @@ namespace SuiMerger.MergedScriptPostProcessing
 {
     class PostProcessingMain
     {
+        static List<string> GetArgs(string s)
+        {
+            return s.Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries).Select(x => x.Trim()).ToList();
+        }
+
+        static MGFadeOutBGM TryParseFadeOutBGM(string s, bool isPS3)
+        {
+            Match fadeOutBGMMatch = fadeOutBGMMusicRegex.Match(s);
+            if (!fadeOutBGMMatch.Success)
+                return null;
+
+            List<string> args = GetArgs(fadeOutBGMMatch.Groups[1].ToString());
+            int channel = int.Parse(args[0]);
+            int fadeTime = int.Parse(args[1]);
+            bool unkBool = bool.Parse(args[2]);
+            return new MGFadeOutBGM(channel, fadeTime, unkBool, isPS3: isPS3);
+        }
+
+        static MGPlayBGM TryParsePlayBGM(string s, bool isPS3)
+        {
+            Match match = playBGMMusicRegex.Match(s);
+            if (!match.Success)
+                return null;
+
+            List<string> args = GetArgs(match.Groups[1].ToString());
+
+            return new MGPlayBGM(
+                channel: int.Parse(args[0]),
+                bgmFileName: args[1],
+                volume: int.Parse(args[2]),
+                unk: int.Parse(args[3]),
+                isPS3: isPS3
+            );
+        }
+
+        static MGPlaySE TryParsePlaySE(string s, bool isPS3)
+        {
+            Match match = playSERegex.Match(s);
+            if (!match.Success)
+                return null;
+
+            List<string> args = GetArgs(match.Groups[1].ToString());
+
+            return new MGPlaySE(
+                channel: int.Parse(args[0]),
+                filename: args[1],
+                volume: int.Parse(args[2]),
+                panning: int.Parse(args[3]),
+                isPS3: isPS3
+            );
+        }
+
+        static MangaGamerInstruction ParseMangaGamerInstruction(string s, bool isPS3)
+        {
+            MGFadeOutBGM fadeOutBGM = TryParseFadeOutBGM(s, isPS3: isPS3);
+            if (fadeOutBGM != null)
+            {
+                return fadeOutBGM;
+            }
+
+            MGPlayBGM playBGM = TryParsePlayBGM(s, isPS3: isPS3);
+            if (playBGM != null)
+            {
+                return playBGM;
+            }
+
+            MGPlaySE playSE = TryParsePlaySE(s, isPS3: isPS3);
+            if (playSE != null)
+            {
+                return playSE;
+            }
+
+            return new GenericInstruction(s, false);
+        }
+
         //Regexes used to parse the hybrid script
         //note: double quote is transformed into single quote in below @ string
         static Regex dialogueRegex = new Regex(@"\s*OutputLine\(", RegexOptions.IgnoreCase);
-        static Regex fadeOutBGMMusicRegex = new Regex(@"\s*FadeOutBGM\(\s*(\d)", RegexOptions.IgnoreCase);
-        static Regex playBGMMusicRegex = new Regex(@"\s*PlayBGM\(\s*(\d)", RegexOptions.IgnoreCase);
-        static Regex playSERegex = new Regex(@"\s*PlaySE\(", RegexOptions.IgnoreCase);
+        static Regex fadeOutBGMMusicRegex = new Regex(@"\s*FadeOutBGM\(([^\)]+)\)", RegexOptions.IgnoreCase);
+        static Regex playBGMMusicRegex = new Regex(@"\s*PlayBGM\(([^\)]+)\)", RegexOptions.IgnoreCase);
+        static Regex playSERegex = new Regex(@"\s*PlaySE\(([^\)]+)\)", RegexOptions.IgnoreCase);
 
         public static void InsertMGLinesUsingPS3XML(string mergedMGScriptPath, string outputPath, MergerConfiguration configuration)
         {
@@ -43,7 +118,7 @@ namespace SuiMerger.MergedScriptPostProcessing
                     //handle a mangagamer chunk
                     foreach (string mgScriptLine in chunk.lines)
                     {
-                        outputStage1.Add(new GenericInstruction(mgScriptLine, false));
+                        outputStage1.Add(ParseMangaGamerInstruction(mgScriptLine, false));
                     }
                 }
             }
@@ -111,7 +186,7 @@ namespace SuiMerger.MergedScriptPostProcessing
 
                     case "BGM_FADE":
                         int durationBGMFade = PS3TimeConversion(Convert.ToInt32(ps3Reader.reader.GetAttribute("duration")));
-                        instructionsList.Add(new MGFadeOutBGM(2, durationBGMFade, true));
+                        instructionsList.Add(new MGFadeOutBGM(2, durationBGMFade, false, true));
                         break;
 
                     case "SFX_PLAY":
@@ -156,15 +231,15 @@ namespace SuiMerger.MergedScriptPostProcessing
 
                         if (fadeChannel == 4)
                         {
-                            instructionsList.Add(new MGFadeOutBGM(1, durationFade, true));
+                            instructionsList.Add(new MGFadeOutBGM(1, durationFade, false, true));
                         }
                         else if (fadeChannel == 7)
                         {
-                            instructionsList.Add(new MGFadeOutBGM(0, durationFade, true));
+                            instructionsList.Add(new MGFadeOutBGM(0, durationFade, false, true));
                         }
                         else if (fadeChannel == 5)
                         {
-                            instructionsList.Add(new MGFadeOutBGM(4, durationFade, true));
+                            instructionsList.Add(new MGFadeOutBGM(4, durationFade, false, true));
                         }
                         else if (fadeChannel == 0)
                         {
