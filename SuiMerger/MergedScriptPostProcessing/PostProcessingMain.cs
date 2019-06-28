@@ -37,9 +37,15 @@ namespace SuiMerger.MergedScriptPostProcessing
 
             List<string> args = GetArgs(match.Groups[1].ToString());
 
+            string bgmFileName = args[1];
+            if(bgmFileName[0] != '"')
+            {
+                throw new Exception("filename not quoted!");
+            }
+
             return new MGPlayBGM(
                 channel: int.Parse(args[0]),
-                bgmFileName: args[1],
+                bgmFileName: bgmFileName.Trim(new char[] {'"'}),
                 volume: int.Parse(args[2]),
                 unk: int.Parse(args[3]),
                 isPS3: isPS3
@@ -54,9 +60,15 @@ namespace SuiMerger.MergedScriptPostProcessing
 
             List<string> args = GetArgs(match.Groups[1].ToString());
 
+            string filename = args[1];
+            if (filename[0] != '"')
+            {
+                throw new Exception("filename not quoted!");
+            }
+
             return new MGPlaySE(
                 channel: int.Parse(args[0]),
-                filename: args[1],
+                filename: filename.Trim(new char[] { '"' }),
                 volume: int.Parse(args[2]),
                 panning: int.Parse(args[3]),
                 isPS3: isPS3

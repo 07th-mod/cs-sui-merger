@@ -56,7 +56,7 @@ namespace SuiMerger.MergedScriptPostProcessing
         public override string GetInstruction()
         {
             string ps3Prefix = IsPS3() ? "ps3/" : String.Empty;
-            return $"PlaySE({channel}, \"{ps3Prefix}{filename}\", {volume}, {panning});";
+            return $"PlaySE( {channel}, \"{ps3Prefix}{filename}\", {volume}, {panning} );";
         }
 
         public override string GetInstructionStandalone()
