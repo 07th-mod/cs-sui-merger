@@ -147,6 +147,8 @@ namespace SuiMerger.MergedScriptPostProcessing
 
         public static void HandleChunk(List<InstructionAssociation> workingInstructionList, List<MangaGamerInstruction> newInstructions)
         {
+            const bool includeOutputInLookBack = true;
+
             List<MGPlayBGM> ps3PlayBGMInstructions = new List<MGPlayBGM>();
             int numMGBGM = 0;
 
@@ -257,6 +259,12 @@ namespace SuiMerger.MergedScriptPostProcessing
                 output.Add(current_inst);
             }
 
+            //Add working instructions to output. Do not use 'output' variable past this point
+            if (includeOutputInLookBack)
+            {
+                workingInstructionList.AddRange(output);
+            }
+
             //look back in the working buffer for unmatched instructions - try to fill with ps3 instructions if possible
             bool lookBackBGMOK = true;
             bool lookBackSEOK = true;
@@ -265,6 +273,7 @@ namespace SuiMerger.MergedScriptPostProcessing
             for (int i = workingInstructionList.Count - 1; (i >= 0) && (i >= workingInstructionList.Count - lookBackAmount); i--)
             {
                 InstructionAssociation inst = workingInstructionList[i]; 
+
                 switch (inst.mgOriginalInstruction)
                 {
                     case MGPlayBGM playBGM:
@@ -272,6 +281,10 @@ namespace SuiMerger.MergedScriptPostProcessing
                         {
                             if (inst.associatedPS3Instructions.Count > 0)
                             {
+                                if (lookBackBGMOK)
+                                {
+                                    Console.WriteLine($"Instruction {inst.mgOriginalInstruction} caused search termination");
+                                }
                                 lookBackBGMOK = false;
                             }
                             else
@@ -309,18 +322,21 @@ namespace SuiMerger.MergedScriptPostProcessing
                 
             }
 
+            if (!includeOutputInLookBack)
+            {
+                workingInstructionList.AddRange(output);
+            }
+
             //if bgm not OK, output a comment error in instructions
             if (ps3PlayBGMInstructions.Count != 0 || ps3PlaySEInstructions.Count != 0 || ps3FadeInstructions.Count != 0)
             {
-                var last_inst = output[output.Count - 1];
+                var last_inst = workingInstructionList[workingInstructionList.Count - 1];
                 last_inst.associatedPS3Instructions.Add(new GenericInstruction("//Failed to insert some PS3 instruction!", false));
                 last_inst.associatedPS3Instructions.AddRange(ps3PlayBGMInstructions);
                 last_inst.associatedPS3Instructions.AddRange(ps3PlaySEInstructions);
                 last_inst.associatedPS3Instructions.AddRange(ps3FadeInstructions);
                 last_inst.associatedPS3Instructions.Add(new GenericInstruction("//End failed instructions", false));
             }
-
-            workingInstructionList.AddRange(output);
         }
 
         public static void InsertMGLinesUsingPS3XML(string mergedMGScriptPath, string outputPath, MergerConfiguration configuration)
