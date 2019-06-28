@@ -133,39 +133,20 @@ namespace SuiMerger.MergedScriptPostProcessing
             }
         }
 
-        public static List<MangaGamerInstruction> HandleChunk(List<MangaGamerInstruction> instructions)
+        public class InstructionAssociation
         {
-            bool gotps3 = false;
-            foreach(MangaGamerInstruction ins in instructions)
+            public MangaGamerInstruction mgOriginalInstruction;
+            public List<MangaGamerInstruction> associatedPS3Instructions;
+
+            public InstructionAssociation(MangaGamerInstruction mgOriginalInstruction)
             {
-                if(ins.IsPS3())
-                {
-                    gotps3 = true;
-                }
+                this.mgOriginalInstruction = mgOriginalInstruction;
+                this.associatedPS3Instructions = new List<MangaGamerInstruction>();
             }
+        }
 
-            if (gotps3)
-            {
-                PrintChunk(instructions);
-            }
-            else
-            {
-                return instructions;
-            }
-
-            //handle BGM: if num BGM match, replace in order, otherwise error
-            //handle SE: if num SE match, replacece in order, otherwise error
-            //handle fade: 
-            // - if num fade match, replace in order.
-            // - otherwise, put fade before the first original BGM in the block.
-            // - otherwise, error
-
-            //record original BGM locations
-            //record original SE locations
-            //record original fade locations
-
-            //make list of new BGM, SE, fade
-
+        public static void HandleChunk(List<InstructionAssociation> workingInstructionList, List<MangaGamerInstruction> newInstructions)
+        {
             List<MGPlayBGM> ps3PlayBGMInstructions = new List<MGPlayBGM>();
             int numMGBGM = 0;
 
@@ -175,12 +156,12 @@ namespace SuiMerger.MergedScriptPostProcessing
             List<MGFadeOutBGM> ps3FadeInstructions = new List<MGFadeOutBGM>();
             int numMGFade = 0;
 
-            foreach (MangaGamerInstruction inst in instructions)
+            foreach (MangaGamerInstruction inst in newInstructions)
             {
                 switch (inst)
                 {
                     case MGPlayBGM playBGM:
-                        if(inst.IsPS3())
+                        if (inst.IsPS3())
                         {
                             ps3PlayBGMInstructions.Add(playBGM);
                         }
@@ -217,7 +198,6 @@ namespace SuiMerger.MergedScriptPostProcessing
                 }
             }
 
-
             //determine whether OK by counting number of each(except for fade)
             bool bgmOK = ps3PlayBGMInstructions.Count == numMGBGM;
             bool seOK = ps3PlaySEInstructions.Count == numMGSE;
@@ -227,26 +207,23 @@ namespace SuiMerger.MergedScriptPostProcessing
             Console.WriteLine("SE: " + (seOK ? "match" : "NO MATCH"));
             Console.WriteLine("FADE: " + (fadeOK ? "match" : "NO MATCH"));
 
-            //get only PS3/mangagamer instructions
-
-            //iterate over all instructions
-            List<MangaGamerInstruction> output = new List<MangaGamerInstruction>(); 
-            foreach(MangaGamerInstruction inst in instructions.Where(x => !x.IsPS3()))
+            List<InstructionAssociation> output = new List<InstructionAssociation>();
+            foreach (MangaGamerInstruction inst in newInstructions.Where(x => !x.IsPS3()))
             {
-                output.Add(inst);
+                InstructionAssociation current_inst = new InstructionAssociation(inst);
 
                 switch (inst)
                 {
                     case MGPlayBGM playBGM:
                         if (!fadeOK && ps3FadeInstructions.Count > 0)
                         {
-                            output.AddRange(ps3FadeInstructions);
+                            current_inst.associatedPS3Instructions.AddRange(ps3FadeInstructions);
                             ps3FadeInstructions.Clear();
                         }
 
                         if (bgmOK)
                         {
-                            output.Add(ps3PlayBGMInstructions[0]);
+                            current_inst.associatedPS3Instructions.Add(ps3PlayBGMInstructions[0]);
                             ps3PlayBGMInstructions.RemoveAt(0);
                         }
                         break;
@@ -254,7 +231,7 @@ namespace SuiMerger.MergedScriptPostProcessing
                     case MGPlaySE playSE:
                         if (seOK)
                         {
-                            output.Add(ps3PlaySEInstructions[0]);
+                            current_inst.associatedPS3Instructions.Add(ps3PlaySEInstructions[0]);
                             ps3PlaySEInstructions.RemoveAt(0);
                         }
                         break;
@@ -263,12 +240,12 @@ namespace SuiMerger.MergedScriptPostProcessing
                     case MGFadeOutBGM fadeBGM:
                         if (fadeOK)
                         {
-                            output.Add(ps3FadeInstructions[0]);
+                            current_inst.associatedPS3Instructions.Add(ps3FadeInstructions[0]);
                             ps3FadeInstructions.RemoveAt(0);
                         }
-                        else if(ps3FadeInstructions.Count > 0)
+                        else if (ps3FadeInstructions.Count > 0)
                         {
-                            output.AddRange(ps3FadeInstructions);
+                            current_inst.associatedPS3Instructions.AddRange(ps3FadeInstructions);
                             ps3FadeInstructions.Clear();
                         }
                         break;
@@ -276,21 +253,74 @@ namespace SuiMerger.MergedScriptPostProcessing
                     default:
                         break;
                 }
+
+                output.Add(current_inst);
             }
 
-            //TODO: should determine "OK" ness by if any instructions still remain in each stack
+            //look back in the working buffer for unmatched instructions - try to fill with ps3 instructions if possible
+            bool lookBackBGMOK = true;
+            bool lookBackSEOK = true;
+
+            int lookBackAmount = 100;
+            for (int i = workingInstructionList.Count - 1; (i >= 0) && (i >= workingInstructionList.Count - lookBackAmount); i--)
+            {
+                InstructionAssociation inst = workingInstructionList[i]; 
+                switch (inst.mgOriginalInstruction)
+                {
+                    case MGPlayBGM playBGM:
+                        if (lookBackBGMOK)
+                        {
+                            if (inst.associatedPS3Instructions.Count > 0)
+                            {
+                                lookBackBGMOK = false;
+                            }
+                            else
+                            {
+                                //try to insert BGM if any. since iterating backwards, take from end of ps3PlayBGMInstructions list
+                                if (ps3PlayBGMInstructions.Count > 0)
+                                {
+                                    int lastIndex = ps3PlayBGMInstructions.Count - 1;
+                                    inst.associatedPS3Instructions.Add(ps3PlayBGMInstructions[lastIndex]);
+                                    ps3PlayBGMInstructions.RemoveAt(lastIndex);
+                                }
+                            }
+                        }
+                        break;
+
+                    case MGPlaySE playSE:
+                        if (lookBackSEOK)
+                        {
+                            if (inst.associatedPS3Instructions.Count > 0)
+                            {
+                                lookBackSEOK = false;
+                            }
+                            else
+                            {
+                                if (ps3PlaySEInstructions.Count > 0)
+                                {
+                                    int lastIndex = ps3PlaySEInstructions.Count - 1;
+                                    inst.associatedPS3Instructions.Add(ps3PlaySEInstructions[lastIndex]);
+                                    ps3PlaySEInstructions.RemoveAt(lastIndex);
+                                }
+                            }
+                        }
+                        break;
+                }
+                
+            }
 
             //if bgm not OK, output a comment error in instructions
             if (ps3PlayBGMInstructions.Count != 0 || ps3PlaySEInstructions.Count != 0 || ps3FadeInstructions.Count != 0)
             {
-                output.Add(new GenericInstruction("//Failed to insert some PS3 instruction!", false));
-                output.AddRange(ps3PlayBGMInstructions);
-                output.AddRange(ps3PlaySEInstructions);
-                output.AddRange(ps3FadeInstructions);
-                output.Add(new GenericInstruction("//End failed instructions", false));
+                var last_inst = output[output.Count - 1];
+                last_inst.associatedPS3Instructions.Add(new GenericInstruction("//Failed to insert some PS3 instruction!", false));
+                last_inst.associatedPS3Instructions.AddRange(ps3PlayBGMInstructions);
+                last_inst.associatedPS3Instructions.AddRange(ps3PlaySEInstructions);
+                last_inst.associatedPS3Instructions.AddRange(ps3FadeInstructions);
+                last_inst.associatedPS3Instructions.Add(new GenericInstruction("//End failed instructions", false));
             }
 
-            return output;
+            workingInstructionList.AddRange(output);
         }
 
         public static void InsertMGLinesUsingPS3XML(string mergedMGScriptPath, string outputPath, MergerConfiguration configuration)
@@ -306,33 +336,39 @@ namespace SuiMerger.MergedScriptPostProcessing
             // --------- Perform stage 1 - this converts the raw merged script into a list of MangaGamerInstructions --------- 
             //Iterate over the the Manga Gamer chunks and the PS3 XML Instructions Chunks of the merged script
             int debug_i = 0;
-            List<MangaGamerInstruction> outputStage1 = new List<MangaGamerInstruction>();
+            List<InstructionAssociation> workingInstructionAssociations = new List<InstructionAssociation>();
 
-
-            List<MangaGamerInstruction> workingChunk = new List<MangaGamerInstruction>();
+            List<MangaGamerInstruction> newChunk = new List<MangaGamerInstruction>();
             foreach (var chunk in PS3XMLChunkFinder.GetAllChunksFromMergedScript(mergedMGScriptPath))
             {
                 if(chunk.isPS3Chunk)
                 {
                     //PS3 XML reader doesn't care about newlines, so just join each line directly to next line
-                    HandlePS3Chunk(String.Join("", chunk.lines), workingChunk, bgmChannelNumber);
+                    HandlePS3Chunk(String.Join("", chunk.lines), newChunk, bgmChannelNumber);
 
-                    outputStage1.AddRange(HandleChunk(workingChunk));
-                    workingChunk = new List<MangaGamerInstruction>();
+                    HandleChunk(workingInstructionAssociations, newChunk);
+                    newChunk = new List<MangaGamerInstruction>();
                 }
                 else
                 {
                     //handle a mangagamer chunk
                     foreach (string mgScriptLine in chunk.lines)
                     {
-                        workingChunk.Add(ParseMangaGamerInstruction(mgScriptLine, false));
+                        newChunk.Add(ParseMangaGamerInstruction(mgScriptLine, false));
                     }
                 }
             }
 
             //If there are any leftovers (probably just mangagamer original instructions), just add them to the output.
-            outputStage1.AddRange(workingChunk);
+            HandleChunk(workingInstructionAssociations, newChunk);
 
+            // Convert the instruction associations to regular mangagamer instructions for stage 2
+            List<MangaGamerInstruction> outputStage1 = new List<MangaGamerInstruction>();
+            foreach(var instructionAssociation in workingInstructionAssociations)
+            {
+                outputStage1.Add(instructionAssociation.mgOriginalInstruction);
+                outputStage1.AddRange(instructionAssociation.associatedPS3Instructions);
+            }
 
             // --------- Perform stage 2 filtering to 'tidy up' the script ---------
             //This section runs filters after all the other filters have run.
