@@ -24,6 +24,11 @@ namespace SuiMerger.MergedScriptPostProcessing
 
         //returns true if instruction originated from PS3 xml
         public bool IsPS3() => isPS3;
+
+        public GenericInstruction ToGenericInstruction()
+        {
+            return new GenericInstruction(GetInstruction(), IsPS3());
+        }
     }
 
     /// <summary>
@@ -63,6 +68,11 @@ namespace SuiMerger.MergedScriptPostProcessing
         {
             return "\t" + GetInstruction();
         }
+
+        public MGPlaySE CloneWithFilename(string filename, bool isPS3)
+        {
+            return new MGPlaySE(this.channel, filename, this.volume, this.panning, isPS3);
+        }
     }
 
     class MGFadeOutBGM : MangaGamerInstruction
@@ -97,11 +107,11 @@ namespace SuiMerger.MergedScriptPostProcessing
         public readonly int pan;
         public readonly int unk;
 
-        public MGPlayBGM(int channel, string bgmFileName, int volume, int unk, bool isPS3) : base(isPS3, false)
+        public MGPlayBGM(int channel, string bgmFileName, int pan, int unk, bool isPS3) : base(isPS3, false)
         {
             this.channel = channel;
             this.bgmFileName = bgmFileName;
-            this.pan = volume;
+            this.pan = pan;
             this.unk = unk;
         }
 
@@ -123,6 +133,11 @@ namespace SuiMerger.MergedScriptPostProcessing
         {
             return "\t" + GetInstruction();
         }
+        
+        public MGPlayBGM CloneWithFilename(string filename, bool isPS3)
+        {
+            return new MGPlayBGM(this.channel, filename, this.pan, this.unk, isPS3);
+        }
     }
 
     class GenericInstruction : MangaGamerInstruction
@@ -142,6 +157,13 @@ namespace SuiMerger.MergedScriptPostProcessing
         public override string GetInstructionStandalone()
         {
             return data;
+        }
+    }
+
+    class FailInstruction : GenericInstruction
+    {
+        public FailInstruction(string data, bool isPS3) : base(data, isPS3)
+        {
         }
     }
 }

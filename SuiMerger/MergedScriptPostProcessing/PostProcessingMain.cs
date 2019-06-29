@@ -46,7 +46,7 @@ namespace SuiMerger.MergedScriptPostProcessing
             return new MGPlayBGM(
                 channel: int.Parse(args[0]),
                 bgmFileName: bgmFileName.Trim(new char[] {'"'}),
-                volume: int.Parse(args[2]),
+                pan: int.Parse(args[2]),
                 unk: int.Parse(args[3]),
                 isPS3: isPS3
             );
@@ -155,9 +155,6 @@ namespace SuiMerger.MergedScriptPostProcessing
             List<MGPlaySE> ps3PlaySEInstructions = new List<MGPlaySE>();
             int numMGSE = 0;
 
-            List<MGFadeOutBGM> ps3FadeInstructions = new List<MGFadeOutBGM>();
-            int numMGFade = 0;
-
             foreach (MangaGamerInstruction inst in newInstructions)
             {
                 switch (inst)
@@ -170,17 +167,6 @@ namespace SuiMerger.MergedScriptPostProcessing
                         else
                         {
                             numMGBGM += 1;
-                        }
-                        break;
-
-                    case MGFadeOutBGM fadeBGM:
-                        if (inst.IsPS3())
-                        {
-                            ps3FadeInstructions.Add(fadeBGM);
-                        }
-                        else
-                        {
-                            numMGFade += 1;
                         }
                         break;
 
@@ -200,14 +186,12 @@ namespace SuiMerger.MergedScriptPostProcessing
                 }
             }
 
-            //determine whether OK by counting number of each(except for fade)
+            //determine whether OK by counting number of each
             bool bgmOK = ps3PlayBGMInstructions.Count == numMGBGM;
             bool seOK = ps3PlaySEInstructions.Count == numMGSE;
-            bool fadeOK = ps3FadeInstructions.Count == numMGFade;
 
             Console.WriteLine("BGM: " + (bgmOK ? "match" : "NO MATCH"));
             Console.WriteLine("SE: " + (seOK ? "match" : "NO MATCH"));
-            Console.WriteLine("FADE: " + (fadeOK ? "match" : "NO MATCH"));
 
             List<InstructionAssociation> output = new List<InstructionAssociation>();
             foreach (MangaGamerInstruction inst in newInstructions.Where(x => !x.IsPS3()))
@@ -217,12 +201,6 @@ namespace SuiMerger.MergedScriptPostProcessing
                 switch (inst)
                 {
                     case MGPlayBGM playBGM:
-                        if (!fadeOK && ps3FadeInstructions.Count > 0)
-                        {
-                            current_inst.associatedPS3Instructions.AddRange(ps3FadeInstructions);
-                            ps3FadeInstructions.Clear();
-                        }
-
                         if (bgmOK)
                         {
                             current_inst.associatedPS3Instructions.Add(ps3PlayBGMInstructions[0]);
@@ -235,20 +213,6 @@ namespace SuiMerger.MergedScriptPostProcessing
                         {
                             current_inst.associatedPS3Instructions.Add(ps3PlaySEInstructions[0]);
                             ps3PlaySEInstructions.RemoveAt(0);
-                        }
-                        break;
-
-
-                    case MGFadeOutBGM fadeBGM:
-                        if (fadeOK)
-                        {
-                            current_inst.associatedPS3Instructions.Add(ps3FadeInstructions[0]);
-                            ps3FadeInstructions.RemoveAt(0);
-                        }
-                        else if (ps3FadeInstructions.Count > 0)
-                        {
-                            current_inst.associatedPS3Instructions.AddRange(ps3FadeInstructions);
-                            ps3FadeInstructions.Clear();
                         }
                         break;
 
@@ -328,14 +292,13 @@ namespace SuiMerger.MergedScriptPostProcessing
             }
 
             //if bgm not OK, output a comment error in instructions
-            if (ps3PlayBGMInstructions.Count != 0 || ps3PlaySEInstructions.Count != 0 || ps3FadeInstructions.Count != 0)
+            if (ps3PlayBGMInstructions.Count != 0 || ps3PlaySEInstructions.Count != 0)// || ps3FadeInstructions.Count != 0)
             {
                 var last_inst = workingInstructionList[workingInstructionList.Count - 1];
-                last_inst.associatedPS3Instructions.Add(new GenericInstruction("//Failed to insert some PS3 instruction!", false));
+                last_inst.associatedPS3Instructions.Add(new FailInstruction("//Failed to insert some PS3 instruction!", false));
                 last_inst.associatedPS3Instructions.AddRange(ps3PlayBGMInstructions);
                 last_inst.associatedPS3Instructions.AddRange(ps3PlaySEInstructions);
-                last_inst.associatedPS3Instructions.AddRange(ps3FadeInstructions);
-                last_inst.associatedPS3Instructions.Add(new GenericInstruction("//End failed instructions", false));
+                last_inst.associatedPS3Instructions.Add(new FailInstruction("//End failed instructions", false));
             }
         }
 
@@ -407,7 +370,49 @@ namespace SuiMerger.MergedScriptPostProcessing
             foreach(var instructionAssociation in workingInstructionAssociations)
             {
                 outputStage1.Add(instructionAssociation.mgOriginalInstruction);
-                outputStage1.AddRange(instructionAssociation.associatedPS3Instructions);
+
+                //check for a "failed" section. If failed section, just insert the whole section.
+                bool failed = false;
+                foreach (var inst in instructionAssociation.associatedPS3Instructions)
+                {
+                    if(inst is FailInstruction)
+                    {
+                        failed = true;
+                    }
+                }
+
+                if(failed)
+                {
+                    outputStage1.AddRange(instructionAssociation.associatedPS3Instructions);
+                    continue;
+                }
+
+
+                foreach (var ps3Inst in instructionAssociation.associatedPS3Instructions)
+                {
+                    MangaGamerInstruction outputInstruction = ps3Inst;
+                    
+                    switch(ps3Inst)
+                    {
+                        case MGPlayBGM ps3MGPlayBGM:
+                            if (instructionAssociation.mgOriginalInstruction is MGPlayBGM)
+                            {
+                                MGPlayBGM mgPlayBGM = (MGPlayBGM)instructionAssociation.mgOriginalInstruction;
+                                outputInstruction = mgPlayBGM.CloneWithFilename(ps3MGPlayBGM.bgmFileName, ps3MGPlayBGM.IsPS3()); 
+                            }
+                            break;
+
+                        case MGPlaySE ps3MGPlaySE:
+                            if (instructionAssociation.mgOriginalInstruction is MGPlaySE)
+                            {
+                                MGPlaySE mgPlaySE = (MGPlaySE)instructionAssociation.mgOriginalInstruction;
+                                outputInstruction = mgPlaySE.CloneWithFilename(ps3MGPlaySE.filename, ps3MGPlaySE.IsPS3());
+                            }
+                            break;
+                    }
+
+                    outputStage1.Add(outputInstruction);
+                }
             }
 
             // --------- Perform stage 2 filtering to 'tidy up' the script ---------
@@ -419,10 +424,14 @@ namespace SuiMerger.MergedScriptPostProcessing
                 //TODO: correctly interpret mangagamer instructions instead of using regexes to determine the line typ
                 if (inst.IsPS3())
                 {
-                    //wrap all ps3-origin instructions in GAltBGMflow
-                    outputStage2.Add($"\tif (GetGlobalFlag(GAltBGMflow) == 1) {{ {inst.GetInstruction()} }}");
+                    //Disable PS3 fade instructions for now
+                    if (!(inst is MGFadeOutBGM))
+                    {
+                        //wrap all ps3-origin instructions in GAltBGMflow
+                        outputStage2.Add($"\tif (GetGlobalFlag(GAltBGMflow) == 1) {{ {inst.GetInstruction()} }}");
+                    }
                 }
-                else if(fadeOutBGMMusicRegex.IsMatch(inst.GetInstruction()) || 
+                else if(//fadeOutBGMMusicRegex.IsMatch(inst.GetInstruction()) || 
                         playBGMMusicRegex.IsMatch(inst.GetInstruction()) || 
                         playSERegex.IsMatch(inst.GetInstruction())) 
                 {
