@@ -339,7 +339,28 @@ namespace SuiMerger.MergedScriptPostProcessing
             }
         }
 
-        public static void InsertMGLinesUsingPS3XML(string mergedMGScriptPath, string outputPath, MergerConfiguration configuration)
+        public static void ExtractBGMAssociations(List<InstructionAssociation> instructionAssociations, Counter counter)
+        {
+            foreach(var instructionAssociation in instructionAssociations)
+            {
+                switch(instructionAssociation.mgOriginalInstruction)
+                {
+                    case MGPlayBGM mgPlayBGM:
+                        foreach(var ps3Inst in instructionAssociation.associatedPS3Instructions)
+                        {
+                            switch(ps3Inst)
+                            {
+                                case MGPlayBGM ps3PlayBGM:
+                                    counter.Add(mgPlayBGM.bgmFileName, ps3PlayBGM.bgmFileName);
+                                    break;
+                            }
+                        }
+                        break;
+                }
+            }
+        }
+
+        public static void InsertMGLinesUsingPS3XML(string mergedMGScriptPath, string outputPath, MergerConfiguration configuration, Counter counter)
         {
             const bool USE_OLD_METHOD_FOR_INSERT_BGM = false; 
 
@@ -377,6 +398,9 @@ namespace SuiMerger.MergedScriptPostProcessing
 
             //If there are any leftovers (probably just mangagamer original instructions), just add them to the output.
             HandleChunk(workingInstructionAssociations, newChunk);
+
+            // Extract BGM associations of mgBGM -> ps3BGM
+            ExtractBGMAssociations(workingInstructionAssociations, counter);
 
             // Convert the instruction associations to regular mangagamer instructions for stage 2
             List<MangaGamerInstruction> outputStage1 = new List<MangaGamerInstruction>();

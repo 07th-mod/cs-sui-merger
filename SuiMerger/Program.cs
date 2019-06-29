@@ -313,7 +313,12 @@ namespace SuiMerger
         /// <param name="config"></param>
         /// <param name="mgInfo"></param>
         /// <param name="guessedInputInfos"></param>
-        static List<PartialSubScriptToMerge> ProcessSingleFile(List<PS3DialogueInstruction> pS3DialogueInstructionsPreFilter, MergerConfiguration config, InputInfo mgInfo, List<InputInfo> guessedInputInfos)
+        static List<PartialSubScriptToMerge> ProcessSingleFile(
+            List<PS3DialogueInstruction> pS3DialogueInstructionsPreFilter, 
+            MergerConfiguration config, 
+            InputInfo mgInfo, 
+            List<InputInfo> guessedInputInfos, 
+            Counter counter)
         {
             string fullPath = Path.Combine(config.input_folder, mgInfo.path);
             string pathNoExt = Path.GetFileNameWithoutExtension(fullPath);
@@ -421,7 +426,7 @@ namespace SuiMerger
 
             //Use the inserted instructions
             string finalOutputWithMergedForkedScripts = Path.Combine(config.output_folder, pathNoExt + ".txt");
-            MergedScriptPostProcessing.PostProcessingMain.InsertMGLinesUsingPS3XML(mergedOutputPath, finalOutputWithMergedForkedScripts, config);
+            MergedScriptPostProcessing.PostProcessingMain.InsertMGLinesUsingPS3XML(mergedOutputPath, finalOutputWithMergedForkedScripts, config, counter);
 
             List<PartialSubScriptToMerge> partialSubScriptsToMerge = ForkingScriptMerger.GetForkedScriptContentFromMergedScript(config.pre_input_folder, finalOutputWithMergedForkedScripts);
 
@@ -503,6 +508,7 @@ namespace SuiMerger
                 filePathsToGetStartEnd.Add(Path.GetFullPath(fileInInputFolder));
             }
 
+            Counter counter = new Counter();
             List<PartialSubScriptToMerge> forkedScriptContentToMergeList = new List<PartialSubScriptToMerge>();
             foreach (InputInfo inputInfo in config.input)
             {
@@ -513,15 +519,19 @@ namespace SuiMerger
                     Console.WriteLine($"\n[  TOML OK   ]: {tomlInputFilePathNormalized} found in config file with region {StringUtils.PrettyPrintListOfListToString(inputInfo.ps3_regions)}");
                     filePathsToGetStartEnd.Remove(tomlInputFilePathNormalized);
                     forkedScriptContentToMergeList.AddRange(
-                        ProcessSingleFile(pS3DialogueInstructionsPreFilter, config, inputInfo, new List<InputInfo>())
+                        ProcessSingleFile(pS3DialogueInstructionsPreFilter, config, inputInfo, new List<InputInfo>(), counter)
                     );
                 }
             }
 
-            //Unmerge all the forked scripts (zonik_....txt)
+            //Unmerge all the sub-scripts (zonik_....txt)
             ForkingScriptMerger.UnMergeForkedScripts(config.pre_input_folder, config.output_folder, forkedScriptContentToMergeList);
 
+            //Write out the counter statistics
+            counter.WriteStatistics(Path.Combine(config.output_folder, "counter_statistics.txt"));
+
             //Save to a file so it can be copied into toml file (if already correct)
+            var tempCounter = new Counter();
             using (StreamWriter sw = FileUtils.CreateDirectoriesAndOpen(config.guessed_matches, FileMode.Create))
             {
                 List<InputInfo> guessedInputInfos = new List<InputInfo>();
@@ -537,7 +547,7 @@ namespace SuiMerger
                         path = relativePath,
                         ps3_regions = new List<List<int>>(),
                     };
-                    ProcessSingleFile(pS3DialogueInstructionsPreFilter, config, wholeFileInputInfo, guessedInputInfos);
+                    ProcessSingleFile(pS3DialogueInstructionsPreFilter, config, wholeFileInputInfo, guessedInputInfos, tempCounter);
 
                     foreach (InputInfo info in guessedInputInfos)
                     {
